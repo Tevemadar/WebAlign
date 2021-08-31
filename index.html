@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<!--
+To change this license header, choose License Headers in Project Properties.
+To change this template file, choose Tools | Templates
+and open the template in the editor.
+-->
+<html>
+    <head>
+        <title>TODO supply a title</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+            html,body{
+                height: 100%;
+                margin: 0;
+            }
+            body{
+                background: purple;
+                padding: 0;
+            }
+            div{
+                position: absolute;
+            }
+            #controls{
+                background: red;
+            }
+            #hsiz{
+                cursor: ew-resize;
+            }
+            #main{
+                background: blue;
+                overflow: hidden;
+            }
+            .hsep{
+                width: 10px;
+                background: grey;
+            }
+            #navi{
+                background: green;
+                overflow: hidden;
+            }
+            #vsiz{
+                height: 10px;
+                background: grey;
+                cursor: ns-resize;
+            }
+            #filmstrip{
+                background: blue;
+                height: 128px;
+                overflow: hidden;
+            }
+            canvas{
+                margin: 0;
+                padding: 0;
+                border: 0;
+            }
+        </style>
+        <script>
+            let fstrip=128;
+            let ctrlw=300;
+            let navw=300;
+            function resize(){
+                let ctrl=document.getElementById("controls");
+                let hsiz=document.getElementById("hsiz");
+                let main=document.getElementById("main");
+                let hsep=document.getElementById("hsep");
+                let navi=document.getElementById("navi");
+                let vsiz=document.getElementById("vsiz");
+                let fstr=document.getElementById("filmstrip");
+                ctrl.style.height=
+                        hsiz.style.height=
+                        main.style.height=
+                        hsep.style.height=
+                        navi.style.height=
+                        vsiz.style.top=(window.innerHeight-fstrip-vsiz.offsetHeight)+"px";
+                ctrl.style.width=hsiz.style.left=ctrlw+"px";
+                navi.style.left=(window.innerWidth-navw)+"px";
+                navi.style.width=navw+"px";
+                hsep.style.left=(window.innerWidth-navw-hsep.offsetWidth)+"px";
+                main.style.left=(ctrlw+hsiz.offsetWidth)+"px";
+                main.style.width=(window.innerWidth-ctrlw-navw-hsiz.offsetWidth-hsep.offsetWidth)+"px";
+                vsiz.style.width=fstr.style.width=window.innerWidth+"px";
+                fstr.style.top=(window.innerHeight-fstrip)+"px";
+                fstr.style.height=fstrip+"px";
+                drawX("maincnv");
+                drawX("navicnv");
+                drawX("filmcnv");
+            }
+            let drag=false;
+            function hdrag(event){
+                drag={x:event.target.offsetWidth-event.offsetX};
+            }
+            function vdrag(event){
+                drag={y:event.target.offsetHeight-event.offsetY};
+            }
+            function mmove(event){
+                if(drag){
+                    if(drag.hasOwnProperty("x"))
+                        ctrlw=event.clientX-drag.x;
+                    if(drag.hasOwnProperty("y"))
+                        fstrip=Math.max(0,window.innerHeight-event.clientY-drag.y);
+                    resize();
+                }
+            }
+            function mup(event){
+                drag=false;
+            }
+            function drawX(id){
+                let cnv=document.getElementById(id);
+                let parent=cnv.parentNode;
+                cnv.width=parent.offsetWidth;
+                cnv.height=parent.offsetHeight;
+                let ctx=cnv.getContext("2d");
+                ctx.clearRect(0,0,cnv.width,cnv.height);
+                ctx.lineWidth=1;
+                ctx.strokeStyle="red";
+                ctx.strokeRect(0.5,0.5,cnv.width-1,cnv.height-1);
+                ctx.beginPath();
+                ctx.moveTo(0,0);
+                ctx.lineTo(cnv.width,cnv.height);
+                ctx.moveTo(0,cnv.height);
+                ctx.lineTo(cnv.width,0);
+                ctx.stroke();
+            }
+        </script>
+    </head>
+    <body onload="resize()" onmouseup="mup(event)" onmousemove="mmove(event)">
+        <div id="controls">TODO write content</div>
+        <div id="hsiz" class="hsep" onmousedown="hdrag(event)"></div>
+        <div id="main">
+            <canvas id="maincnv"></canvas>
+        </div>
+        <div id="hsep" class="hsep"></div>
+        <div id="navi">
+            <canvas id="navicnv"></canvas>
+        </div>
+        <div id="vsiz" onmousedown="vdrag(event)"></div>
+        <div id="filmstrip">
+            <canvas id="filmcnv"></canvas>
+        </div>
+    </body>
+</html>
