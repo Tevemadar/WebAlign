@@ -48,7 +48,8 @@ and open the template in the editor.
         </style>
         <script>
             async function startup(){
-//                let list=await fetch("response_1638197688426.json").then(response=>response.json());
+                let list=await fetch("response_1638197688426.json").then(response=>response.json());
+                fill(list);
             }
             
             function fill(list){
@@ -62,23 +63,23 @@ and open the template in the editor.
                     ul.appendChild(li);
                 }
             }
-            function load(event){
-                let target=event.target;
-                target.parentElement.removeChild(target);
-                console.log(event);
-                var fr=new FileReader();
-                fr.onload=function(){
-                    var data=JSON.parse(fr.result);
-                    fill(data);
-                };
-                fr.readAsText(target.files[0]);
-            }
+//            function load(event){
+//                let target=event.target;
+//                target.parentElement.removeChild(target);
+//                console.log(event);
+//                var fr=new FileReader();
+//                fr.onload=function(){
+//                    var data=JSON.parse(fr.result);
+//                    fill(data);
+//                };
+//                fr.readAsText(target.files[0]);
+//            }
         </script>
     </head>
     <body onload="startup()">
         <div id="container">
             <div id="list">
-                <input type="file" oninput="load(event)">
+                <!--<input type="file" oninput="load(event)">-->
                 <ul id="ul">
                 </ul>
             </div>
