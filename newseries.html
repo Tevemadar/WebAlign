@@ -16,7 +16,7 @@ and open the template in the editor.
             body{
                 margin: 0;
             }
-            div{
+            .high{
                 height: 100%;
             }
             #container{
@@ -32,62 +32,174 @@ and open the template in the editor.
                 flex:none;
                 width:10px;
                 background: gray;
+                cursor: ew-resize;
             }
             #prevbox{
                 flex: auto;
                 width: 100%;
                 height: 100%;
-/*                padding: 0;
-                margin: 0;*/
                 overflow: hidden;
             }
             iframe{
                 width:100%;
                 height:100%;
             }
+            .active{
+                font-weight: bold;
+                color: blue;
+            }
+            #create{
+                background: lightgray;
+                position: absolute;
+                width: 400px;
+                /*height: 300px;*/
+            }
+            #cover{
+                background: darkgray;
+                opacity: 0.5;
+                position: absolute;
+                top:0;
+                left:0;
+                width: 100%;
+                height: 100%;
+            }
         </style>
         <script>
-            async function startup(){
-                let list=await fetch("response_1638197688426.json").then(response=>response.json());
-                fill(list);
+            async function startup() {
+                let list = await fetch("response_1638197688426.json").then(response => response.json());
+                let preview = document.getElementById("preview");
+                let ul = document.getElementById("ul");
+                for (let item of list)
+                    if (item.description.startsWith("KG link:")) {
+                        let li = document.createElement("li");
+                        li.innerText = li.dataset.title = item.title.replaceAll("_", " ");
+                        li.dataset.kgUrl = item.description.substring(8);
+                        li.dataset.container = item.container_url;
+                        li.onmouseover = mover;
+                        li.onclick = popup;
+                        ul.appendChild(li);
+                    }
             }
-            
-            function fill(list){
-                let preview=document.getElementById("preview");
-                let ul=document.getElementById("ul");
-                for(let item of list){
-                    let li=document.createElement("li");
-                    li.innerText=item.title;
-                    if(item.description.startsWith("KG link:"))
-                        li.onmouseover=()=>preview.src=item.description.substring(8);
-                    ul.appendChild(li);
+            function clear() {
+                for (let item of document.getElementsByTagName("li"))
+                    item.classList.remove("active");
+            }
+            let drag = false;
+            function mup() {
+                drag = false;
+                document.getElementById("preview").style = "pointer-events: auto";
+            }
+            function mdown(event) {
+                drag = event.offsetX;
+                document.getElementById("preview").style = "pointer-events: none";
+            }
+            function mmove(event) {
+                if (drag !== false)
+                    document.getElementById("list").style.width = (event.clientX - drag) + "px";
+            }
+            function mover(event) {
+                clear();
+                event.target.classList.add("active");
+                preview.src = event.target.dataset.kgUrl;
+            }
+            let series;
+            async function popup(event) {
+                let dataset = event.target.dataset;
+                series={
+                    name:dataset.title,
+                    container:dataset.container,
+                    kg:dataset.kgUrl,
+                    atlas:{},
+                    sections:[]
+                };
+                document.getElementById("cover").hidden = false;
+                let create = document.getElementById("create");
+                create.hidden = false;
+                create.style.left = (innerWidth - create.offsetWidth) / 2 + "px";
+                create.style.top = (innerHeight - create.offsetHeight) / 2 + "px";
+                document.getElementById("name").innerText = dataset.title;
+                let btn=document.getElementById("create_btn");
+                btn.disabled=true;
+                let prg=document.getElementById("progress");
+                prg.innerText="Fetching image list";
+                let isvparams="?format=json&delimiter=/";
+                let images=await fetch(dataset.container+isvparams)
+                        .then(response=>response.json())
+                        .then(array=>array.filter(item=>item.hasOwnProperty("subdir")));
+                let cnt=0;
+                for(let image of images){
+                    cnt++;
+                    prg.innerText="Fetching DZI "+cnt+"/"+images.length;
+                    let subdir=image.subdir;
+                    let pos=subdir.lastIndexOf(".");
+                    let name=subdir.substring(0,pos);
+                    let dzi=await fetch(dataset.container+"/"+subdir+name+".dzi").then(response=>response.text());
+                    series.sections.push({
+                        name:subdir.substring(0,subdir.length-1),
+                        width:parseInt(dzi.match(/Width="(\d+)"/m)[1]),
+                        height:parseInt(dzi.match(/Height="(\d+)"/m)[1]),
+                        tilesize:parseInt(dzi.match(/TileSize="(\d+)"/m)[1]),
+                        overlap:parseInt(dzi.match(/Overlap="(\d+)"/m)[1]),
+                        format:dzi.match(/Format="([^"]+)"/m)[1]
+                    });
                 }
+                btn.disabled=false;
             }
-//            function load(event){
-//                let target=event.target;
-//                target.parentElement.removeChild(target);
-//                console.log(event);
-//                var fr=new FileReader();
-//                fr.onload=function(){
-//                    var data=JSON.parse(fr.result);
-//                    fill(data);
-//                };
-//                fr.readAsText(target.files[0]);
-//            }
+            let lock = false;
+            function cancel() {
+                if (lock)
+                    return;
+                document.getElementById("cover").hidden = true;
+                document.getElementById("create").hidden = true;
+            }
+            async function create() {
+                let filename = document.getElementById("filename").value.replaceAll(/[^-\w().!]/g, "");
+                if (lock || filename.length === 0)
+                    return;
+                series.atlas=document.getElementById("atlas").value;
+                lock = true;
+                if (!filename.endsWith(".json"))
+                    filename += ".json";
+                let upload = await fetch("bucket.php?put=true&filename=" + filename).then(response => response.json());
+                if (!upload.hasOwnProperty("url")) {
+                    document.write("Possible error happened:<br>" + JSON.stringify(upload));
+                    return;
+                }
+                await fetch(upload.url, {
+                    method: "PUT",
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(series)
+                });
+                location.href="webalign.html?filename="+filename;
+            }
         </script>
     </head>
-    <body onload="startup()">
-        <div id="container">
-            <div id="list">
-                <!--<input type="file" oninput="load(event)">-->
+    <body onload="startup()" onmousemove="mmove(event)" onmouseup="mup()">
+        <div id="container" class="high">
+            <div id="list" class="high">
                 <ul id="ul">
                 </ul>
             </div>
-            <div id="spacer"></div>
-            <div id="prevbox">
+            <div id="spacer" class="high" onmousedown="mdown(event)"></div>
+            <div id="prevbox" class="high">
                 <iframe id="preview"></iframe>
-                <!--<iframe id="preview" src="test.html"></iframe>-->
             </div>
+        </div>
+        <div id="cover" onclick="cancel()" hidden></div>
+        <div id="create" hidden>
+            Creating new series descriptor
+            <p style="text-align: center">Title: <span id="name" style="font-weight: bold;"></span></p>
+            <p style="display:flex">Enter filename:<input id="filename" style="flex:auto" placeholder="filename.json"><br></p>
+            <p style="text-align: center">Target atlas:
+                <select id="atlas">
+                    <option value="WHS_SD_Rat_v3_39um">WHS SD Rat v3 39um</option>
+                    <option value="ABA_Mouse_CCFv3_2017_25um">ABA Mouse CCFv3 2017 25um</option>
+                </select>
+            </p>
+            <div style="text-align: center" id="progress"></div>
+            <div style="display:flex"><button id="create_btn" style="flex:auto" onclick="create()">Create</button><button style="flex:auto" onclick="cancel()">Cancel</button></div>
         </div>
     </body>
 </html>
