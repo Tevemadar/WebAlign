@@ -20,7 +20,8 @@ curl_close($token_ch);
 $token_obj = json_decode($token_res, true);
 $token = $token_obj["access_token"];
 $bearer = "Bearer " . $token;
-setcookie("bucket-bearer", $bearer, array('secure' => true, 'httponly' => true, 'samesite' => 'None'));
+//setcookie("bucket-bearer", $bearer, array('secure' => true, 'httponly' => true, 'samesite' => 'None'));
+header("Set-Cookie: bucket-bearer=$bearer; Secure; HttpOnly; SameSite=None");
 ?>
 <!DOCTYPE html>
 <html>
