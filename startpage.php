@@ -5,7 +5,7 @@ $token_base = "https://iam.ebrains.eu/auth/realms/hbp/protocol/openid-connect/to
 $token_params = http_build_query(array(
     "grant_type" => "authorization_code",
     "code" => filter_input(INPUT_GET, "code"),
-    "redirect_uri" => "https://webalign.apps-dev.hbp.eu/startpage.php",
+    "redirect_uri" => getenv("redirect_uri"),
     "client_id" => getenv("client_id"),
     "client_secret" => getenv("client_secret")
         ));

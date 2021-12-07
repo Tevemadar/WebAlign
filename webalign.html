@@ -276,10 +276,87 @@ and open the template in the editor.
 //                    drawstrip();
             }
             function stripscroll(event){
-                strippos+=event.deltaY;
+                event.preventDefault();
+                strippos-=event.deltaY;
                 drawstrip();
             }
-            function strippick(event){
+            let strippick=false;
+            function stripdown(event){
+                if(!ready)return;
+                strippick={downx:event.offsetX,mx:event.offsetX,t:Date.now()};
+            }
+            let stripmoving=false;
+            function stripmove(event){
+                if(!strippick)return;
+                let t=Date.now();
+                if(t===strippick.t)return;
+                let v=(strippick.mx-event.offsetX)/(t-strippick.t);
+                strippick.mx=event.offsetX;
+                strippick.t=t;
+                if(!stripmoving){
+                    stripmoving={t};
+                    requestAnimationFrame(stripanim);
+                }
+                stripmoving.v=v;
+                drawstrip();
+            }
+            function stripanim(){
+                if(!stripmoving)return;
+                let t=Date.now();
+                strippos+=stripmoving.v*(t-stripmoving.t);
+                stripmoving.t=t;
+                stripmoving.v*=0.95;
+                if(Math.abs(stripmoving.v)<0.01)stripmoving=false;
+                if(strippos>fsw-width){
+                    strippos=fsw-width;
+                    stripmoving=false;
+                }
+                if(strippos<0){
+                    strippos=0;
+                    stripmoving=false;
+                }
+                if(stripmoving)
+                    requestAnimationFrame(stripanim);
+                drawstrip();
+            }
+            function stripup(event){
+                if(Math.abs(strippick.downx-event.offsetX)<2){
+                    stripmoving=false;
+                    let x=event.offsetX+strippos;
+                    for(let i=0;i<images.length;i++){
+                        let image=images[i];
+                        if(image.fsx<=x && x<image.fsx+image.fsw){
+                            activateslice(i);
+                            break;
+                        }
+                    }
+                }
+                strippick=false;
+            }
+//            let strippick=false;
+//            function stripdown(event){
+//                if(!ready)return;
+//                strippick={downx:event.offsetX,base:strippos};
+//            }
+//            function stripmove(event){
+//                if(!strippick)return;
+//                strippos=strippick.base+strippick.downx-event.offsetX;
+//                drawstrip();
+//            }
+//            function stripup(event){
+//                if(Math.abs(strippick.downx-event.offsetX)<2){
+//                    let x=event.offsetX+strippos;
+//                    for(let i=0;i<images.length;i++){
+//                        let image=images[i];
+//                        if(image.fsx<=x && x<image.fsx+image.fsw){
+//                            activateslice(i);
+//                            break;
+//                        }
+//                    }
+//                }
+//                strippick=false;
+//            }
+            function strippick_remove(event){
                 if(!ready)return;
                 let x=event.offsetX+strippos;
                 for(let i=0;i<images.length;i++){
@@ -836,7 +913,8 @@ and open the template in the editor.
         </div>
         <div id="vsiz" onmousedown="vresize(event)"></div>
         <div id="filmstrip">
-            <canvas id="filmcnv" onclick="strippick(event)" onmousewheel="stripscroll(event)"></canvas>
+            <!--<canvas id="filmcnv" onclick="strippick(event)" onwheel="stripscroll(event)"></canvas>-->
+            <canvas id="filmcnv" onmousedown="stripdown(event)" onmousemove="stripmove(event)" onmouseup="stripup(event)" onwheel="stripscroll(event)"></canvas>
         </div>
     </body>
 </html>
