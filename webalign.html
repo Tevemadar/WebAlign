@@ -56,6 +56,15 @@ and open the template in the editor.
                 padding: 0;
                 border: 0;
             }
+            #cover{
+                background: darkgray;
+                opacity: 0.5;
+                position: absolute;
+                top:0;
+                left:0;
+                width: 100%;
+                height: 100%;
+            }
         </style>
         <script src="slicer.js"></script>
         <script src="math.js"></script>
@@ -89,7 +98,7 @@ and open the template in the editor.
                     let name=fullname.substring(0,pos);
 
                     let image={
-                        ...section,base:series.container+"/"+fullname+"/"+name+"_files/",
+                        ...section,base:series.container+"/"+fullname+"/"+name+"_files/",flat:name+".flat"
                     };
                     
                     let w=image.width;
@@ -391,6 +400,14 @@ and open the template in the editor.
             function restore(){
                 if(!ready)return;
                 ouv=images[stripidx].ouv.slice();
+                drawimage();
+                drawnavi();
+            }
+            function ouv_clear(){
+                if(!ready)return;
+                ouv=[0,atlas.ydim/2,atlas.zdim-1,
+                     atlas.xdim,0,0,
+                     0,0,-atlas.zdim];
                 drawimage();
                 drawnavi();
             }
@@ -878,6 +895,41 @@ and open the template in the editor.
                     body: JSON.stringify(series)
                 });
             }
+            async function exprt(){
+                document.getElementById("cover").hidden = false;
+                let zipfile=new ArrayBuffer(0);
+                for(let image of images){
+                    let formdata=new FormData();
+                    formdata.append("zip",new Blob([zipfile],{type:"application/octet-stream"}));
+                    
+                    let slice=dataslice(image.ouv);
+                    let rebuf=new ArrayBuffer(slice.data.byteLength+9);
+                    let dv=new DataView(rebuf);
+                    dv.setUint8(0,2);
+                    dv.setUint32(1,slice.width,false);
+                    dv.setUint32(5,slice.height,false);
+                    for(let pos=0;pos<slice.data.length;pos++){
+                        dv.setUint16(9+pos*2,slice.data[pos],false);
+                    }
+                    formdata.append("flat",new Blob([rebuf],{type:"application/octet-stream"}),image.flat);
+                    zipfile=await fetch("zipper.php",{method:"POST",body:formdata}).then(response=>response.arrayBuffer());
+                }
+                
+                let zipname=args.get("filename").replace(".json",".zip");
+                let upload = await fetch("bucket.php?put=true&filename=" + zipname).then(response => response.json());
+                if (!upload.hasOwnProperty("url")) {
+                    alert("Can't save: "+JSON.stringify(upload));
+                    return;
+                }
+                await fetch(upload.url, {
+                    method: "PUT",
+                    headers: {
+                        'Content-Type': 'application/octer-stream'
+                    },
+                    body: zipfile
+                });
+                document.getElementById("cover").hidden = true;
+            }
         </script>
     </head>
     <body onload="startup()" onmouseup="mup(event)" onmousemove="mmove(event)">
@@ -885,7 +937,7 @@ and open the template in the editor.
             <span id="image"><br></span><br>
             <span id="atlas"></span>
             <hr>
-            <button onclick="store()">Store</button><button onclick="restore()">Restore</button>
+            <button onclick="store()">Store</button><button onclick="restore()">Restore</button><button onclick="ouv_clear()">Clear</button>
             <br>
             Overlay:<br>
             <input id="mainalpha" type="range" min="0" max="100" step="1" value="100" oninput="drawimage()">
@@ -896,7 +948,8 @@ and open the template in the editor.
             <input id="stripoutline" type="color" value="#0000FF" oninput="drawstrip()">
             <br>
             <br>
-            <button onclick="save()">Save to bucket</button>
+            <hr>
+            <button onclick="save()">Save to bucket</button><button onclick="exprt()">Export overlays</button>
         </div>
         <div id="hsiz" class="hsep" onmousedown="hresize(event)"></div>
         <div id="main">
@@ -916,5 +969,6 @@ and open the template in the editor.
             <!--<canvas id="filmcnv" onclick="strippick(event)" onwheel="stripscroll(event)"></canvas>-->
             <canvas id="filmcnv" onmousedown="stripdown(event)" onmousemove="stripmove(event)" onmouseup="stripup(event)" onwheel="stripscroll(event)"></canvas>
         </div>
+        <div id="cover" hidden></div>
     </body>
 </html>
