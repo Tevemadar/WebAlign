@@ -1,8 +1,8 @@
 <?php
 ob_start();
 $referer=$_SERVER["HTTP_REFERER"];
-$validator=$_SERVER["REQUEST_SCHEME"]."://".$_SERVER["SERVER_NAME"].str_replace("zipper.php", "webalign.html?", $_SERVER["REQUEST_URI"]);
-strpos($referer,$validator) === 0 or die($referer."\n".$validator);
+$validator="https://".$_SERVER["SERVER_NAME"].str_replace("zipper.php", "webalign.html?", $_SERVER["REQUEST_URI"]);
+strpos($referer,$validator) === 0 or die("!");
 $zipfile=tempnam(sys_get_temp_dir(), "zip");
 if($_FILES["zip"]["size"]>0){
     move_uploaded_file($_FILES["zip"]["tmp_name"], $zipfile);
