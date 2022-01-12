@@ -1,5 +1,9 @@
 <?php
 
+$referer=$_SERVER["HTTP_REFERER"];
+$validator="https://".$_SERVER["SERVER_NAME"]."/";
+strpos($referer,$validator) === 0 or die("!");
+
 $ch = curl_init("https://data-proxy.ebrains.eu/api/buckets/"
         . filter_input(INPUT_COOKIE, "clb-collab-id")
         . "/"

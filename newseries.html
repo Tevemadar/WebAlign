@@ -9,7 +9,7 @@ and open the template in the editor.
         <title>TODO supply a title</title>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <style>
+<!--        <style>
             html,body{
                 height: 100%;
             }
@@ -63,47 +63,131 @@ and open the template in the editor.
                 width: 100%;
                 height: 100%;
             }
-        </style>
+        </style>-->
         <script>
-            async function startup() {
-                let list = await fetch("response_1638197688426.json").then(response => response.json());
-                let preview = document.getElementById("preview");
-                let ul = document.getElementById("ul");
-                for (let item of list)
-                    if (item.description.startsWith("KG link:")) {
-                        let li = document.createElement("li");
-                        li.innerText = li.dataset.title = item.title.replaceAll("_", " ");
-                        li.dataset.kgUrl = item.description.substring(8);
-                        li.dataset.container = item.container_url;
-                        li.onmouseover = mover;
-                        li.onclick = popup;
-                        ul.appendChild(li);
+            let filename="";
+            function filtername(event){
+                filename=event.target.value=event.target.value.replaceAll(/[^-\w().!]/g, "");
+                trybutton();
+            }
+            let collecting=false;
+            let recollect=false;
+            let collection=[];
+            let bucket;
+            async function trycollect(event){
+                if(collecting){
+                    recollect=true;
+                    return;
+                }
+                prg=document.getElementById("log");
+
+                collecting=true;
+                let list=collection=[];
+                
+                try{
+//                    let list=await fetch("bucket_fast.php?bucket="+event.target.value.replaceAll(/[^-\w().!]/g, "")).then(response => response.json());
+                    bucket=event.target.value.replaceAll(/[^-\w().!]/g, "");
+                    let result=await fetch("bucket_fast.php?"+bucket+"?delimiter=/").then(response => response.json());
+//                    prg.innerText=JSON.stringify(result,null,1);
+                    if(result.hasOwnProperty("objects")){
+                        let images=result.objects.filter(item=>item.hasOwnProperty("subdir"));
+                        for(let image of images){
+                            prg.innerText="Fetching DZI "+(list.length+1)+"/"+images.length;
+                            let subdir=image.subdir;
+                            let pos=subdir.lastIndexOf(".");
+                            let name=subdir.substring(0,pos);
+                            let dzi=await fetch("bucket_fast.php?"+bucket+"/"+subdir+name+".dzi")
+                                    .then(response=>response.json())
+                                    .then(json=>fetch(json.url))
+                                    .then(response=>response.text());
+                            list.push({
+                                name:subdir.substring(0,subdir.length-1),
+                                width:parseInt(dzi.match(/Width="(\d+)"/m)[1]),
+                                height:parseInt(dzi.match(/Height="(\d+)"/m)[1]),
+                                tilesize:parseInt(dzi.match(/TileSize="(\d+)"/m)[1]),
+                                overlap:parseInt(dzi.match(/Overlap="(\d+)"/m)[1]),
+                                format:dzi.match(/Format="([^"]+)"/m)[1]
+                            });
+                        }
                     }
+                }catch(ex){console.log(ex);}
+                
+                collecting=false;
+                if(recollect){
+                    recollect=false;
+                    trycollect(event);
+                }else{
+                    collection=list;
+                    prg.innerText=JSON.stringify(list,null,1);
+                    trybutton();
+                }
             }
-            function clear() {
-                for (let item of document.getElementsByTagName("li"))
-                    item.classList.remove("active");
+            function trybutton(){
+                document.querySelector("button").disabled=filename.length*collection.length===0;
             }
-            let drag = false;
-            function mup() {
-                drag = false;
-                document.getElementById("preview").style = "pointer-events: auto";
+            async function create(){
+                document.querySelector("button").disabled=true;
+                let series={
+                    bucket,
+                    atlas:document.getElementById("atlas").value,
+                    sections:collection
+                };
+                if (!filename.endsWith(".json"))
+                    filename += ".json";
+                let upload = await fetch("bucket.php?put=true&filename=" + filename).then(response => response.json());
+                if (!upload.hasOwnProperty("url")) {
+                    document.write("Possible error happened:<br>" + JSON.stringify(upload));
+                    return;
+                }
+                await fetch(upload.url, {
+                    method: "PUT",
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(series)
+                });
+                location.href="webalign.html?filename="+filename;
             }
-            function mdown(event) {
-                drag = event.offsetX;
-                document.getElementById("preview").style = "pointer-events: none";
-            }
-            function mmove(event) {
-                if (drag !== false)
-                    document.getElementById("list").style.width = (event.clientX - drag) + "px";
-            }
-            function mover(event) {
-                clear();
-                event.target.classList.add("active");
-                preview.src = event.target.dataset.kgUrl;
-            }
-            let series;
-            async function popup(event) {
+            
+//            async function startup() {
+//                let list = await fetch("response_1638197688426.json").then(response => response.json());
+//                let preview = document.getElementById("preview");
+//                let ul = document.getElementById("ul");
+//                for (let item of list)
+//                    if (item.description.startsWith("KG link:")) {
+//                        let li = document.createElement("li");
+//                        li.innerText = li.dataset.title = item.title.replaceAll("_", " ");
+//                        li.dataset.kgUrl = item.description.substring(8);
+//                        li.dataset.container = item.container_url;
+//                        li.onmouseover = mover;
+//                        li.onclick = popup;
+//                        ul.appendChild(li);
+//                    }
+//            }
+//            function clear() {
+//                for (let item of document.getElementsByTagName("li"))
+//                    item.classList.remove("active");
+//            }
+//            let drag = false;
+//            function mup() {
+//                drag = false;
+//                document.getElementById("preview").style = "pointer-events: auto";
+//            }
+//            function mdown(event) {
+//                drag = event.offsetX;
+//                document.getElementById("preview").style = "pointer-events: none";
+//            }
+//            function mmove(event) {
+//                if (drag !== false)
+//                    document.getElementById("list").style.width = (event.clientX - drag) + "px";
+//            }
+//            function mover(event) {
+//                clear();
+//                event.target.classList.add("active");
+//                preview.src = event.target.dataset.kgUrl;
+//            }
+//            let series;
+            async function popup_old(event) {
                 let dataset = event.target.dataset;
                 series={
                     name:dataset.title,
@@ -145,14 +229,14 @@ and open the template in the editor.
                 }
                 btn.disabled=false;
             }
-            let lock = false;
-            function cancel() {
-                if (lock)
-                    return;
-                document.getElementById("cover").hidden = true;
-                document.getElementById("create").hidden = true;
-            }
-            async function create() {
+//            let lock = false;
+//            function cancel() {
+//                if (lock)
+//                    return;
+//                document.getElementById("cover").hidden = true;
+//                document.getElementById("create").hidden = true;
+//            }
+            async function create_old() {
                 let filename = document.getElementById("filename").value.replaceAll(/[^-\w().!]/g, "");
                 if (lock || filename.length === 0)
                     return;
@@ -176,7 +260,18 @@ and open the template in the editor.
             }
         </script>
     </head>
-    <body onload="startup()" onmousemove="mmove(event)" onmouseup="mup()">
+    <body>
+        Enter name of image-chunk collab: <input oninput="trycollect(event)"><br>
+        Enter filename:<input id="filename" placeholder="filename.json" oninput="filtername(event)"><br>
+        Target atlas:
+        <select id="atlas">
+            <option value="WHS_SD_Rat_v3_39um">WHS SD Rat v3 39um</option>
+            <option value="ABA_Mouse_CCFv3_2017_25um">ABA Mouse CCFv3 2017 25um</option>
+        </select><br>
+        <button onclick="create()" disabled>Create</button><br>
+        <pre id="log"></pre>
+    </body>
+<!--    <body onload="startup()" onmousemove="mmove(event)" onmouseup="mup()">
         <div id="container" class="high">
             <div id="list" class="high">
                 <ul id="ul">
@@ -201,5 +296,5 @@ and open the template in the editor.
             <div style="text-align: center" id="progress"></div>
             <div style="display:flex"><button id="create_btn" style="flex:auto" onclick="create()">Create</button><button style="flex:auto" onclick="cancel()">Cancel</button></div>
         </div>
-    </body>
+    </body>-->
 </html>

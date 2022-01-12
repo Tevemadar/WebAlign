@@ -98,7 +98,7 @@ and open the template in the editor.
                     let name=fullname.substring(0,pos);
 
                     let image={
-                        ...section,base:series.container+"/"+fullname+"/"+name+"_files/",flat:name+".flat"
+                        ...section,base:series.bucket+"/"+fullname+"/"+name+"_files/",flat:name+".flat"
                     };
                     
                     let w=image.width;
@@ -220,16 +220,16 @@ and open the template in the editor.
             
             let strippos;
             let stripidx;
-//            let stripdrawing=false;
-//            let stripredraw=false;
-//            async function drawstrip(){
-            function drawstrip(){
+            let stripdrawing=false;
+            let stripredraw=false;
+            async function drawstrip(){
+//            function drawstrip(){
                 if(!ready)return;
-//                stripredraw=false;
-//                if(stripdrawing){
-//                    stripredraw=true;
-//                    return;
-//                }
+                stripredraw=false;
+                if(stripdrawing){
+                    stripredraw=true;
+                    return;
+                }
                 
                 if(strippos>fsw-width)strippos=fsw-width;
                 if(strippos<0)strippos=0;
@@ -276,13 +276,16 @@ and open the template in the editor.
                             let i=document.createElement("img");
                             i.onload=()=>{image.icon=i;drawstrip();};
                             i.crossOrigin="anonymous";
-                            i.src=image.base+l+"/0_0."+image.format;
+//                            i.src=image.base+l+"/0_0."+image.format;
+                            i.src=await fetch("bucket_fast.php?"+image.base+l+"/0_0."+image.format)
+                                    .then(result=>result.json())
+                                    .then(json=>json.url);
                         }
                     }
                 
-//                stripdrawing=false;
-//                if(stripredraw)
-//                    drawstrip();
+                stripdrawing=false;
+                if(stripredraw)
+                    drawstrip();
             }
             function stripscroll(event){
                 event.preventDefault();
@@ -446,7 +449,8 @@ and open the template in the editor.
                 //let xx=x,yy=y;
                 for(let x=0;x<xtiles;x++)
                     for(let y=0;y<ytiles;y++)
-                        loads.push(new Promise((resolve,reject)=>{
+                        loads.push(fetch("bucket_fast.php?"+base+maxlevel+"/"+x+"_"+y+"."+format)
+                        .then(result=>result.json()).then(json=>new Promise((resolve,reject)=>{
                             let tile=document.createElement("img");
                             tile.onerror=reject;
                             tile.onload=()=>{
@@ -456,8 +460,20 @@ and open the template in the editor.
                                 resolve();
                             };
                             tile.crossOrigin="anonymous";
-                            tile.src=base+maxlevel+"/"+x+"_"+y+"."+format;
-                        }));
+                            tile.src=json.url;
+                        })));
+//                        loads.push(new Promise((resolve,reject)=>{
+//                            let tile=document.createElement("img");
+//                            tile.onerror=reject;
+//                            tile.onload=()=>{
+//                                ctx.drawImage(tile,x*tilesize-(x===0?0:overlap),y*tilesize-(y===0?0:overlap));
+//                                //if(wcopy===mainw && hcopy===mainh && idx===stripidx)
+//                                //    document.getElementById("maincnv").getContext("2d").drawImage(fullcanvas,xx,yy,w,h);
+//                                resolve();
+//                            };
+//                            tile.crossOrigin="anonymous";
+//                            tile.src=base+maxlevel+"/"+x+"_"+y+"."+format;
+//                        }));
                 await Promise.all(loads);
                 if(wcopy!==mainw || hcopy!==mainh)
                     return;
