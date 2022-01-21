@@ -87,19 +87,26 @@ and open the template in the editor.
                 let download=await fetch("bucket.php?filename=" + args.get("filename")).then(response=>response.json());
                 series=await fetch(download.url).then(response=>response.json());
                 console.log(Date.now()-start,"Got series");
-                /*let*/ atlas=new Promise(resolve=>new Worker("getlas.js?"+series.atlas)
+//                /*let*/ atlas=new Promise(resolve=>new Worker("getlas.js?"+series.atlas)
+                /*let*/ atlas=new Promise(resolve=>new Worker("getlas.js?"+(series.target.substring(0,series.target.lastIndexOf("."))))
                         .onmessage=event=>resolve(event.data));
 //                let worker=new Worker("getlas.js?"+args.get("atlas"));
 
-                for(let section of series.sections){
-                    // {"name":"hbp-00167-641_2001_2561_s001.tif","width":22500,"height":17500,"tilesize":254,"overlap":1,"format":"png"}
-                    let fullname=section.name;
+//                for(let section of series.sections){
+                for(let section of series.slices){
+                    // {"filename":"hbp-00167-641_2001_2561_s001.tif","width":22500,"height":17500,"tilesize":254,"overlap":1,"format":"png"}
+                    let fullname=section.filename;
                     let pos=fullname.lastIndexOf(".");
                     let name=fullname.substring(0,pos);
 
                     let image={
                         ...section,base:series.bucket+"/"+fullname+"/"+name+"_files/",flat:name+".flat"
                     };
+                    //!!
+                    if(image.hasOwnProperty("anchoring")){
+                        image.ouv=image.anchoring;
+                        delete image.anchoring;
+                    }
                     
                     let w=image.width;
                     let h=image.height;
@@ -136,7 +143,7 @@ and open the template in the editor.
                 for(let image of images){
                     if(image.hasOwnProperty("ouv"))
                         image.anchored=true;
-                    image.snr=parseInt(image.name.match(/_s(\d+)/)[1]);
+                    image.snr=parseInt(image.filename.match(/_s(\d+)/)[1]);
                 }
                 propagate();
                 
@@ -385,7 +392,7 @@ and open the template in the editor.
                 stripidx=idx;
                 marker=false;
                 let image=images[idx];
-                document.getElementById("image").innerText=image.name+"\n"+image.width+" x "+image.height;
+                document.getElementById("image").innerText=image.filename+"\n"+image.width+" x "+image.height;
                 ouv=image.ouv.slice();
                 drawimage();
                 drawstrip();
@@ -674,6 +681,7 @@ and open the template in the editor.
                 drag={type:"mdrag",x:event.offsetX,y:event.offsetY};
             }
             function maindown(event){
+                event.preventDefault();
                 if(!marker || event.code==="Space")
                     marker={type:"cross",
                             x:(mainx-mainimg.x)/mainimg.w,
@@ -893,10 +901,14 @@ and open the template in the editor.
             async function save(){
                 for(let i=0;i<images.length;i++){
                     let image=images[i];
+//                    if(image.anchored)
+//                        series.sections[i].ouv=image.ouv;
+//                    else
+//                        delete series.sections[i].ouv;
                     if(image.anchored)
-                        series.sections[i].ouv=image.ouv;
+                        series.slices[i].anchoring=image.ouv;
                     else
-                        delete series.sections[i].ouv;
+                        delete series.slices[i].anchoring;
                 }
                 let upload = await fetch("bucket.php?put=true&filename=" + args.get("filename")).then(response => response.json());
                 if (!upload.hasOwnProperty("url")) {

@@ -101,7 +101,7 @@ and open the template in the editor.
                                     .then(json=>fetch(json.url))
                                     .then(response=>response.text());
                             list.push({
-                                name:subdir.substring(0,subdir.length-1),
+                                filename:subdir.substring(0,subdir.length-1),
                                 width:parseInt(dzi.match(/Width="(\d+)"/m)[1]),
                                 height:parseInt(dzi.match(/Height="(\d+)"/m)[1]),
                                 tilesize:parseInt(dzi.match(/TileSize="(\d+)"/m)[1]),
@@ -129,8 +129,10 @@ and open the template in the editor.
                 document.querySelector("button").disabled=true;
                 let series={
                     bucket,
-                    atlas:document.getElementById("atlas").value,
-                    sections:collection
+//                    atlas:document.getElementById("atlas").value,
+                    target:document.getElementById("atlas").value,
+//                    sections:collection
+                    slices:collection
                 };
                 if (!filename.endsWith(".json"))
                     filename += ".json";
@@ -265,8 +267,10 @@ and open the template in the editor.
         Enter filename:<input id="filename" placeholder="filename.json" oninput="filtername(event)"><br>
         Target atlas:
         <select id="atlas">
-            <option value="WHS_SD_Rat_v3_39um">WHS SD Rat v3 39um</option>
-            <option value="ABA_Mouse_CCFv3_2017_25um">ABA Mouse CCFv3 2017 25um</option>
+<!--            <option value="WHS_SD_Rat_v3_39um">WHS SD Rat v3 39um</option>
+            <option value="ABA_Mouse_CCFv3_2017_25um">ABA Mouse CCFv3 2017 25um</option>-->
+            <option value="WHS_SD_Rat_v3_39um.cutlas">WHS SD Rat v3 39um</option>
+            <option value="ABA_Mouse_CCFv3_2017_25um.cutlas">ABA Mouse CCFv3 2017 25um</option>
         </select><br>
         <button onclick="create()" disabled>Create</button><br>
         <pre id="log"></pre>
