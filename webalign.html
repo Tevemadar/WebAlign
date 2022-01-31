@@ -87,14 +87,12 @@ and open the template in the editor.
                 let download=await fetch("bucket.php?filename=" + args.get("filename")).then(response=>response.json());
                 series=await fetch(download.url).then(response=>response.json());
                 console.log(Date.now()-start,"Got series");
-//                /*let*/ atlas=new Promise(resolve=>new Worker("getlas.js?"+series.atlas)
-                /*let*/ atlas=new Promise(resolve=>new Worker("getlas.js?"+(series.target.substring(0,series.target.lastIndexOf("."))))
+                /*let*/ atlas=new Promise(resolve=>new Worker("getlas.js?"+series.atlas)
                         .onmessage=event=>resolve(event.data));
 //                let worker=new Worker("getlas.js?"+args.get("atlas"));
 
-//                for(let section of series.sections){
-                for(let section of series.slices){
-                    // {"filename":"hbp-00167-641_2001_2561_s001.tif","width":22500,"height":17500,"tilesize":254,"overlap":1,"format":"png"}
+                for(let section of series.sections){
+                    // {"name":"hbp-00167-641_2001_2561_s001.tif","width":22500,"height":17500,"tilesize":254,"overlap":1,"format":"png"}
                     let fullname=section.filename;
                     let pos=fullname.lastIndexOf(".");
                     let name=fullname.substring(0,pos);
@@ -102,11 +100,6 @@ and open the template in the editor.
                     let image={
                         ...section,base:series.bucket+"/"+fullname+"/"+name+"_files/",flat:name+".flat"
                     };
-                    //!!
-                    if(image.hasOwnProperty("anchoring")){
-                        image.ouv=image.anchoring;
-                        delete image.anchoring;
-                    }
                     
                     let w=image.width;
                     let h=image.height;
@@ -148,7 +141,7 @@ and open the template in the editor.
                 propagate();
                 
                 //stripidx=Math.min(images.length-1,(images.length>>1)+1);
-                activateslice(Math.min(images.length-1,(images.length>>1)+1));
+                activateslice(images.length>>1);
                 strippos=images[stripidx].fsx-(window.innerWidth-images[stripidx].fsw)/2;
                 console.log(images[stripidx]);
                 console.log(strippos);
@@ -901,14 +894,10 @@ and open the template in the editor.
             async function save(){
                 for(let i=0;i<images.length;i++){
                     let image=images[i];
-//                    if(image.anchored)
-//                        series.sections[i].ouv=image.ouv;
-//                    else
-//                        delete series.sections[i].ouv;
                     if(image.anchored)
-                        series.slices[i].anchoring=image.ouv;
+                        series.sections[i].ouv=image.ouv;
                     else
-                        delete series.slices[i].anchoring;
+                        delete series.sections[i].ouv;
                 }
                 let upload = await fetch("bucket.php?put=true&filename=" + args.get("filename")).then(response => response.json());
                 if (!upload.hasOwnProperty("url")) {
@@ -926,8 +915,18 @@ and open the template in the editor.
             async function exprt(){
                 document.getElementById("cover").hidden = false;
                 let zipfile=new ArrayBuffer(0);
+                
+                let formdata=new FormData();
+                formdata.append("zip",new Blob([zipfile],{type:"application/octet-stream"}));
+                let descriptor={
+                    target:series.atlas+".cutlas",
+                    slices:images.map(image=>({filename:image.filename,width:image.width,height:image.height,anchoring:image.ouv}))
+                };
+                formdata.append("flat",new Blob([JSON.stringify(descriptor,null,1)],{type:"application/json"}),"anchorings.json");
+                zipfile=await fetch("zipper.php",{method:"POST",body:formdata}).then(response=>response.arrayBuffer());
+                
                 for(let image of images){
-                    let formdata=new FormData();
+                    /*let*/ formdata=new FormData();
                     formdata.append("zip",new Blob([zipfile],{type:"application/octet-stream"}));
                     
                     let slice=dataslice(image.ouv);
