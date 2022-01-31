@@ -30,7 +30,7 @@ header("Set-Cookie: bucket-bearer=$bearer; Secure; HttpOnly; SameSite=None");
         <title></title>
         <script>
             let bucket=<?php
-            $ch = curl_init("https://data-proxy.ebrains.eu/api/buckets/" . filter_input(INPUT_COOKIE, "clb-collab-id")) . "?delimiter=/";
+            $ch = curl_init("https://data-proxy.ebrains.eu/api/buckets/" . filter_input(INPUT_COOKIE, "clb-collab-id") . "?delimiter=/");
             curl_setopt_array($ch, array(
                 CURLOPT_HTTPHEADER => array(
                     "Accept: application/json",
