@@ -1,4 +1,5 @@
-function derle(data,method){
+function derle(data,method,progress){
+    let report=Date.now();
     let word=method>1;
     let result=word?new Uint16Array(data.length):new Uint8Array(data.length);
     let dread,cread;
@@ -20,6 +21,11 @@ function derle(data,method){
     let writepos = 0;
     let readpos=0;
     while(readpos<data.length){
+        if(Date.now()-report>100){
+//            console.log(readpos+"/"+data.length);
+progress(readpos,data.length);
+            report=Date.now();
+        }
         let d=dread();
         write(d);
         let c=cread();

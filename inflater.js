@@ -1,4 +1,5 @@
-function inflate(data, approx) {
+function inflate(data, approx, progress) {
+    let report=Date.now();
     if (!approx)
         approx = data.length;
     let readpos = 0;
@@ -7,6 +8,11 @@ function inflate(data, approx) {
 
     let last;
     do {
+        if(Date.now()-report>100){
+//            console.log(readpos+"/"+data.length*8);
+            progress(readpos,data.length*8);
+            report=Date.now();
+        }
         last = readbit();
         let typ = readbits(2);
 //                    console.log(last, typ);

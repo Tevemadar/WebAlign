@@ -65,6 +65,23 @@ and open the template in the editor.
                 width: 100%;
                 height: 100%;
             }
+            #popup,#popcont{
+                background: white;
+                position: absolute;
+                top:0;
+                bottom:0;
+                left:0;
+                right:0;
+                margin:auto;
+            }
+            #popup{
+                width: 500px;
+                height: 300px;
+            }
+            #popcont{
+                width: max-content;
+                height: max-content;
+            }
         </style>
         <script src="slicer.js"></script>
         <script src="math.js"></script>
@@ -78,6 +95,7 @@ and open the template in the editor.
             let ready=false;
             async function startup(){
                 let start=Date.now();
+                popup("Loading data");
                 window.addEventListener("resize",resize);
                 resize();
                 for(let arg of location.search.substring(1).split("&")){
@@ -88,7 +106,12 @@ and open the template in the editor.
                 series=await fetch(download.url).then(response=>response.json());
                 console.log(Date.now()-start,"Got series");
                 /*let*/ atlas=new Promise(resolve=>new Worker("getlas.js?"+series.atlas)
-                        .onmessage=event=>resolve(event.data));
+                        .onmessage=event=>{
+                            if(event.data.hasOwnProperty("blob"))
+                                resolve(event.data);
+                            else
+                                popup(event.data);
+                });
 //                let worker=new Worker("getlas.js?"+args.get("atlas"));
 
                 for(let section of series.sections){
@@ -149,6 +172,7 @@ and open the template in the editor.
                 ready=true;
                 resize();
                 console.log(images);
+                cover();
             }
             let ctrlw=300;
             let fstrip=128;
@@ -912,8 +936,17 @@ and open the template in the editor.
                     body: JSON.stringify(series)
                 });
             }
-            async function exprt(){
+            function popup(pop){
                 document.getElementById("cover").hidden = false;
+                document.getElementById("popup").hidden = false;
+                document.getElementById("popcont").innerHTML=pop;
+            }
+            function cover(){
+                document.getElementById("cover").hidden = true;
+                document.getElementById("popup").hidden = true;
+            }
+            async function exprt(){
+                popup("Exporting overlays");
                 let zipfile=new ArrayBuffer(0);
                 
                 let formdata=new FormData();
@@ -955,7 +988,7 @@ and open the template in the editor.
                     },
                     body: zipfile
                 });
-                document.getElementById("cover").hidden = true;
+                cover();
             }
         </script>
     </head>
@@ -996,6 +1029,9 @@ and open the template in the editor.
             <!--<canvas id="filmcnv" onclick="strippick(event)" onwheel="stripscroll(event)"></canvas>-->
             <canvas id="filmcnv" onmousedown="stripdown(event)" onmousemove="stripmove(event)" onmouseup="stripup(event)" onwheel="stripscroll(event)"></canvas>
         </div>
-        <div id="cover" hidden></div>
+        <div id="cover">        </div>
+        <div id="popup">
+            <div id="popcont"></div>
+        </div>
     </body>
 </html>
