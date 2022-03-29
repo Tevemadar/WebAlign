@@ -1,6 +1,13 @@
 <?php
 ob_start();
 
+$collab = filter_input(INPUT_GET, "state");
+$compliant = true;
+if (filter_input(INPUT_COOKIE, "clb-collab-id") !== $collab) {
+    $compliant = false;
+    header("Set-Cookie: clb-collab-id=$collab; Secure; HttpOnly; SameSite=None", false);
+}
+
 $token_base = "https://iam.ebrains.eu/auth/realms/hbp/protocol/openid-connect/token";
 $token_params = http_build_query(array(
     "grant_type" => "authorization_code",
@@ -30,7 +37,7 @@ header("Set-Cookie: bucket-bearer=$bearer; Secure; HttpOnly; SameSite=None");
         <title></title>
         <script>
             let bucket=<?php
-            $ch = curl_init("https://data-proxy.ebrains.eu/api/buckets/" . filter_input(INPUT_COOKIE, "clb-collab-id") . "?delimiter=/");
+            $ch = curl_init("https://data-proxy.ebrains.eu/api/buckets/" . $collab . "?delimiter=/");
             curl_setopt_array($ch, array(
                 CURLOPT_HTTPHEADER => array(
                     "Accept: application/json",
@@ -49,6 +56,12 @@ header("Set-Cookie: bucket-bearer=$bearer; Secure; HttpOnly; SameSite=None");
         </script>
     </head>
     <body onload="startup()">
+        <?php if (!$compliant) { ?>
+            <div style="background: red; left: 0px; right: 0px; margin: 5px">
+                <b>Error: data loss detected. Please consider using a web browser which is compliant with internet standards.</b><br>
+                While a list of files below may still appear, probably none of them will work.
+            </div>
+        <?php } ?>
         <table>
             <thead>
                 <tr><th>Filename</th><th>Size</th><th>Modified</th></tr>
