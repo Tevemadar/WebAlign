@@ -93,6 +93,7 @@ and open the template in the editor.
             let images=[];
             let fsw=0;
             let ready=false;
+            let gray;
             async function startup(){
                 let start=Date.now();
                 popup("Loading data");
@@ -112,6 +113,10 @@ and open the template in the editor.
                             else
                                 popup(event.data);
                 });
+                new Worker("getgray.js?"+series.atlas).onmessage=event=>{
+                    gray=new Uint8Array(event.data);
+                    document.getElementById("modality").disabled=false;
+                };
 //                let worker=new Worker("getlas.js?"+args.get("atlas"));
 
                 for(let section of series.sections){
@@ -984,7 +989,7 @@ and open the template in the editor.
                 await fetch(upload.url, {
                     method: "PUT",
                     headers: {
-                        'Content-Type': 'application/octer-stream'
+                        'Content-Type': 'application/zip'
                     },
                     body: zipfile
                 });
@@ -999,6 +1004,10 @@ and open the template in the editor.
             <hr>
             <button onclick="store()">Store</button><button onclick="restore()">Restore</button><button onclick="ouv_clear()">Clear</button>
             <br>
+            <select id="modality" oninput="drawimage();drawstrip();drawnavi();" disabled>
+                <option>Segmentation</option>
+                <option>Template</option>
+            </select><br>
             Overlay:<br>
             <input id="mainalpha" type="range" min="0" max="100" step="1" value="100" oninput="drawimage()">
             <input id="mainoutline" type="color" value="#0000FF" oninput="drawimage()">
@@ -1007,6 +1016,8 @@ and open the template in the editor.
             <input id="stripalpha" type="range" min="0" max="100" step="1" value="100" oninput="drawstrip()">
             <input id="stripoutline" type="color" value="#0000FF" oninput="drawstrip()">
             <br>
+            <hr>
+            <input id="contrast" type="range" min="0" max="255" step="1" value="255" oninput="drawimage();drawstrip();drawnavi();">
             <br>
             <hr>
             <button onclick="save()">Save to bucket</button><button onclick="exprt()">Export overlays</button>

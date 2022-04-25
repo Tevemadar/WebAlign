@@ -1,4 +1,5 @@
-function inflate(data, approx, progress) {
+function inflate(data, config={}) {
+    let {approx,progress,notrim}=config;
     let report=Date.now();
     if (!approx)
         approx = data.length;
@@ -8,8 +9,7 @@ function inflate(data, approx, progress) {
 
     let last;
     do {
-        if(Date.now()-report>100){
-//            console.log(readpos+"/"+data.length*8);
+        if(progress && Date.now()-report>100){
             progress(readpos,data.length*8);
             report=Date.now();
         }
@@ -123,8 +123,9 @@ function inflate(data, approx, progress) {
     } while (!last);
     console.log(readpos, data.length * 8);
     console.log(writepos);
-    resize(writepos);
-    return result;
+    if(!notrim)
+        resize(writepos);
+    return notrim?{result,length:writepos}:result;
 
     function readbit() {
         return (data[readpos >> 3] >> (readpos++ & 7) & 1);

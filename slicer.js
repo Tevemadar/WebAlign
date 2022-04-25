@@ -24,14 +24,57 @@ function dataslice(ouv,width,height){
     return {data:data,width:width,height:height};
 }
 
+function grayslice(ouv,width,height){
+    let [ox,oy,oz,ux,uy,uz,vx,vy,vz]=ouv;
+    if(arguments.length===1){
+        width=Math.round(Math.sqrt(ux*ux+uy*uy+uz*uz));
+        height=Math.round(Math.sqrt(ux*vx+vy*vy+vz*vz));
+    }
+    let data=new Uint8Array(width*height);
+    let xdim=atlas.xdim;
+    let ydim=atlas.ydim;
+    let zdim=atlas.zdim;
+    let zslice=xdim*ydim;
+    for(let y=0;y<height;y++){
+        let hx=ox+vx*y/height;
+        let hy=oy+vy*y/height;
+        let hz=oz+vz*y/height;
+        for(let x=0;x<width;x++){
+            let lx=Math.round(hx+ux*x/width);
+            let ly=Math.round(hy+uy*x/width);
+            let lz=Math.round(hz+uz*x/width);
+            if( (lx>=0) && (lx<xdim) && (ly>=0) && (ly<ydim) && (lz>=0) && (lz<zdim) )
+                data[x+y*width]=gray[lx+ly*xdim+lz*zslice];
+        }
+    }
+    return {data:data,width:width,height:height};
+}
+
 function drawslice(ouv,ctx,x,y,width,height,mode){
 //    if(mode===0)return;
     let imagedata=ctx.getImageData(x,y,width,height);
     width=imagedata.width;
     height=imagedata.height;
     let slicedata=dataslice(ouv,width,height).data;
+    let graydata=document.getElementById("modality").selectedIndex==1?grayslice(ouv,width,height).data:false;
     let pixeldata=imagedata.data;
-    if(mode>=0){
+    if(graydata){
+        let contrast=document.getElementById("contrast").valueAsNumber;
+        if(mode>0)
+            mode=-100;
+        let a=-mode;
+        let a100=100+mode;
+        let wh=width*height;
+        for(let i=0;i<wh;i++)
+            if(slicedata[i]>0){
+                let j=i<<2;
+                let ag=a*Math.min(255,graydata[i]*255/contrast);
+                pixeldata[j]=(pixeldata[j]*a100+ag)/100;
+                pixeldata[j+1]=(pixeldata[j+1]*a100+ag)/100;
+                pixeldata[j+2]=(pixeldata[j+2]*a100+ag)/100;
+                pixeldata[j+3]=255;
+            }
+    }else if(mode>=0){
         let r=mode>>16;
         let g=(mode>>8)&255;
         let b=mode&255;
