@@ -87,7 +87,14 @@ and open the template in the editor.
         <script src="math.js"></script>
         <!--<script src="dzimage.js"></script>-->
         <script>
-            let args=new Map();
+            let args=JSON.parse(decodeURIComponent(location.search.substring(1)));
+            function argspack(pack){
+                return encodeURIComponent(JSON.stringify({
+                    collab:args["clb-collab-id"],
+                    token:args.token,
+                    ...pack
+                }));
+            };
             let atlas={xdim:1,ydim:1,zdim:1};
             let series;
             let images=[];
@@ -99,11 +106,7 @@ and open the template in the editor.
                 popup("Loading data");
                 window.addEventListener("resize",resize);
                 resize();
-                for(let arg of location.search.substring(1).split("&")){
-                    let pair=arg.split("=");
-                    args.set(pair[0],pair.length===2?pair[1]:true);
-                }
-                let download=await fetch("bucket.php?filename=" + args.get("filename")).then(response=>response.json());
+                let download=await fetch(`bucket.php?${argspack({filename:args.filename})}`).then(response=>response.json());
                 series=await fetch(download.url).then(response=>response.json());
                 console.log(Date.now()-start,"Got series");
                 /*let*/ atlas=new Promise(resolve=>new Worker("getlas.js?"+series.atlas)
@@ -306,7 +309,8 @@ and open the template in the editor.
                             i.onload=()=>{image.icon=i;drawstrip();};
                             i.crossOrigin="anonymous";
 //                            i.src=image.base+l+"/0_0."+image.format;
-                            i.src=await fetch("bucket_fast.php?"+image.base+l+"/0_0."+image.format)
+//                            i.src=await fetch("bucket_fast.php?"+image.base+l+"/0_0."+image.format)
+                            i.src=await fetch(`bucket_fast.php?${argspack({filename:image.base+l+"/0_0."+image.format})}`)
                                     .then(result=>result.json())
                                     .then(json=>json.url);
                         }
@@ -478,7 +482,8 @@ and open the template in the editor.
                 //let xx=x,yy=y;
                 for(let x=0;x<xtiles;x++)
                     for(let y=0;y<ytiles;y++)
-                        loads.push(fetch("bucket_fast.php?"+base+maxlevel+"/"+x+"_"+y+"."+format)
+//                        loads.push(fetch("bucket_fast.php?"+base+maxlevel+"/"+x+"_"+y+"."+format)
+                        loads.push(fetch(`bucket_fast.php?${argspack({filename:base+maxlevel+"/"+x+"_"+y+"."+format})}`)
                         .then(result=>result.json()).then(json=>new Promise((resolve,reject)=>{
                             let tile=document.createElement("img");
                             tile.onerror=reject;
@@ -928,7 +933,8 @@ and open the template in the editor.
                     else
                         delete series.sections[i].ouv;
                 }
-                let upload = await fetch("bucket.php?put=true&filename=" + args.get("filename")).then(response => response.json());
+//                let upload = await fetch("bucket.php?put=true&filename=" + args.get("filename")).then(response => response.json());
+                let upload = await fetch(`bucket.php?${argspack({filename:args.filename,put:true})}`).then(response => response.json());
                 if (!upload.hasOwnProperty("url")) {
                     alert("Can't save: "+JSON.stringify(upload));
                     return;
@@ -980,8 +986,8 @@ and open the template in the editor.
                     zipfile=await fetch("zipper.php",{method:"POST",body:formdata}).then(response=>response.arrayBuffer());
                 }
                 
-                let zipname=args.get("filename").replace(".json",".zip");
-                let upload = await fetch("bucket.php?put=true&filename=" + zipname).then(response => response.json());
+                let zipname=args["filename"].replace(".json",".zip");
+                let upload = await fetch(`bucket.php?${argspack({filename:zipname,put:true})}`).then(response => response.json());
                 if (!upload.hasOwnProperty("url")) {
                     alert("Can't save: "+JSON.stringify(upload));
                     return;
