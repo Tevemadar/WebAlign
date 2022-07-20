@@ -82,6 +82,27 @@ and open the template in the editor.
                 width: max-content;
                 height: max-content;
             }
+            .stepgroup{
+                position:absolute;
+                margin:0;
+                padding:0;
+                /*background: red;*/
+                display:flex;
+            }
+            .stepgroup>button{
+                margin:0;
+                padding:0;
+            }
+            .ctrlrow{
+                position: static;
+                display:flex;
+                align-items: center;
+                margin-bottom: 5px;
+                margin-top: 5px;
+            }
+            /*input[type=range]{*/
+                /*width:100px;*/
+            /*}*/
         </style>
         <script src="slicer.js"></script>
         <script src="math.js"></script>
@@ -229,8 +250,9 @@ and open the template in the editor.
                 drawX("navicnv");
                 drawX("filmcnv");
                 drawstrip();
-                drawimage();
-                drawnavi();
+                imagenavi();
+//                drawimage();
+//                drawnavi();
             }
             function drawX(id){
                 let cnv=document.getElementById(id);
@@ -420,9 +442,10 @@ and open the template in the editor.
                 let image=images[idx];
                 document.getElementById("image").innerText=image.filename+"\n"+image.width+" x "+image.height;
                 ouv=image.ouv.slice();
-                drawimage();
+                imagenavi();
+//                drawimage();
                 drawstrip();
-                drawnavi();
+//                drawnavi();
 //                drawcut();
             }
             function store(){
@@ -436,16 +459,18 @@ and open the template in the editor.
             function restore(){
                 if(!ready)return;
                 ouv=images[stripidx].ouv.slice();
-                drawimage();
-                drawnavi();
+                imagenavi();
+//                drawimage();
+//                drawnavi();
             }
             function ouv_clear(){
                 if(!ready)return;
                 ouv=[0,atlas.ydim/2,atlas.zdim-1,
                      atlas.xdim,0,0,
                      0,0,-atlas.zdim];
-                drawimage();
-                drawnavi();
+                imagenavi();
+//                drawimage();
+//                drawnavi();
             }
             
             let mainimg=false;
@@ -584,6 +609,16 @@ and open the template in the editor.
 //                let z=ouv[2]+(ouv[5]+ouv[8])/2;
                 xfact=xdim*nfact;
                 zfact=zdim*nfact;
+                let navi=document.getElementById("navi");
+                let g1=document.getElementById("group1");
+                g1.style.left=navi.offsetLeft+"px";
+                g1.style.top=navi.offsetTop+"px";
+                let g2=document.getElementById("group2");
+                g2.style.left=navi.offsetLeft+"px";
+                g2.style.top=navi.offsetTop+zfact+10+"px";
+                let g3=document.getElementById("group3");
+                g3.style.left=navi.offsetLeft+navw-xfact+"px";
+                g3.style.top=navi.offsetTop+zfact+xfact+10+10+"px";
                 ctx.fillStyle="black";
                 ctx.fillRect(0,0,navw,zfact);
                 ctx.fillRect(0,zfact+10,navw,xfact);
@@ -829,8 +864,9 @@ and open the template in the editor.
                         }
                         break;
                 }
-                drawnavi();
-                drawimage();
+                imagenavi();
+//                drawnavi();
+//                drawimage();
                 drag.x=event.offsetX;
                 drag.y=event.offsetY;
             }
@@ -1001,6 +1037,50 @@ and open the template in the editor.
                 });
                 cover();
             }
+            function imagenavi(){
+                drawimage();
+                drawnavi();
+            }
+            function clickstep(coord,dir){
+                ouv[coord]+=document.getElementById("panstep").valueAsNumber*dir;
+                imagenavi();
+            }
+            function clickrot(c1,c2,dir){
+                const angle=document.getElementById("rotstep").valueAsNumber*dir*Math.PI/180;
+                const sincos=[Math.sin(angle),Math.cos(angle)];
+                decomp(ouv);
+                rot(ouv,3+c1,3+c2,sincos);
+                rot(ouv,6+c1,6+c2,sincos);
+                recomp(ouv);
+                imagenavi();
+            }
+            function mainstep(x,y){
+                let step=document.getElementById("panstep").valueAsNumber;
+                decomp(ouv);
+                for(let i=0;i<3;i++){
+                    ouv[i]+=ouv[i+3]*step*x;
+                    ouv[i]+=ouv[i+6]*step*y;
+                }
+                recomp(ouv);
+                imagenavi();
+            }
+            function mainrot(dir){
+                const angle=document.getElementById("rotstep").valueAsNumber*dir*Math.PI/180;
+                const sincos=[Math.sin(angle),Math.cos(angle)];
+                for(let i=0;i<3;i++){
+                    ouv[i]+=ouv[i+3]/2+ouv[i+6]/2;
+                }
+                let u=ouv.slice(3,6);
+                let v=ouv.slice(6);
+                for(let i=0;i<3;i++){
+                    ouv[i+3]=u[i]*sincos[1]-v[i]*sincos[0];
+                    ouv[i+6]=u[i]*sincos[0]+v[i]*sincos[1];
+                }
+                for(let i=0;i<3;i++){
+                    ouv[i]-=ouv[i+3]/2+ouv[i+6]/2;
+                }
+                imagenavi();
+            }
         </script>
     </head>
     <body onload="startup()" onmouseup="mup(event)" onmousemove="mmove(event)">
@@ -1009,27 +1089,42 @@ and open the template in the editor.
             <span id="atlas"></span>
             <hr>
             <button onclick="store()">Store</button><button onclick="restore()">Restore</button><button onclick="ouv_clear()">Clear</button>
-            <br>
+            <div class="ctrlrow">
             <select id="modality" oninput="drawimage();drawstrip();drawnavi();" disabled>
                 <option>Segmentation</option>
                 <option>Template</option>
-            </select><br>
-            Overlay:<br>
+            </select>
+                &#x2194;&#x2195;<input id="panstep" type="number" min="0" max="20" step="0.1" value="1">
+                <!--1f504-->&#x21BA;<input id="rotstep" type="number" min="0" max="20" step="0.1" value="1">
+            </div>
+            <div class="ctrlrow">
+            Overlay:
             <input id="mainalpha" type="range" min="0" max="100" step="1" value="100" oninput="drawimage()">
             <input id="mainoutline" type="color" value="#0000FF" oninput="drawimage()">
-            <br>
-            Filmstrip:<br>
+            </div>
+            <div class="ctrlrow">
+            Filmstrip:
             <input id="stripalpha" type="range" min="0" max="100" step="1" value="100" oninput="drawstrip()">
             <input id="stripoutline" type="color" value="#0000FF" oninput="drawstrip()">
-            <br>
+            </div>
             <hr>
-            <input id="contrast" type="range" min="0" max="255" step="1" value="255" oninput="drawimage();drawstrip();drawnavi();">
-            <br>
+            <div class="ctrlrow" id="gray" disabled="true">
+            Brighten:
+            <input id="contrast" type="range" min="0" max="255" step="1" value="255" oninput="imagenavi();drawstrip();">
+            </div>
             <hr>
             <button onclick="save()">Save to bucket</button><button onclick="exprt()">Export overlays</button>
         </div>
         <div id="hsiz" class="hsep" onmousedown="hresize(event)"></div>
         <div id="main">
+            <div class="stepgroup">
+                <button onclick="mainstep(1,0)">&#x25c0;</button>
+                <button onclick="mainstep(-1,0)">&#x25b6;</button>
+                <button onclick="mainstep(0,1)">&#x25b2;</button>
+                <button onclick="mainstep(0,-1)">&#x25bc;</button>
+                <button onclick="mainrot(-1)">&#x21b6;</button>
+                <button onclick="mainrot(1)">&#x21b7;</button>
+            </div>
             <canvas id="maincnv" tabindex="1"
                     onmousedown="maindrag(event)"
                     onmousemove="mainmove(event)"
@@ -1049,6 +1144,30 @@ and open the template in the editor.
         <div id="cover">        </div>
         <div id="popup">
             <div id="popcont"></div>
+        </div>
+        <div id="group1" class="stepgroup">
+            <button onclick="clickstep(1,1)">&#x25c0;</button>
+            <button onclick="clickstep(1,-1)">&#x25b6;</button>
+            <button onclick="clickstep(2,1)">&#x25b2;</button>
+            <button onclick="clickstep(2,-1)">&#x25bc;</button>
+            <button onclick="clickrot(1,2,-1)">&#x21b6;</button>
+            <button onclick="clickrot(1,2,1)">&#x21b7;</button>
+        </div>
+        <div id="group2" class="stepgroup">
+            <button onclick="clickstep(1,1)">&#x25c0;</button>
+            <button onclick="clickstep(1,-1)">&#x25b6;</button>
+            <button onclick="clickstep(0,1)">&#x25b2;</button>
+            <button onclick="clickstep(0,-1)">&#x25bc;</button>
+            <button onclick="clickrot(1,0,-1)">&#x21b6;</button>
+            <button onclick="clickrot(1,0,1)">&#x21b7;</button>
+        </div>
+        <div id="group3" class="stepgroup">
+            <button onclick="clickstep(0,-1)">&#x25c0;</button>
+            <button onclick="clickstep(0,1)">&#x25b6;</button>
+            <button onclick="clickstep(2,1)">&#x25b2;</button>
+            <button onclick="clickstep(2,-1)">&#x25bc;</button>
+            <button onclick="clickrot(0,2,1)">&#x21b6;</button>
+            <button onclick="clickrot(0,2,-1)">&#x21b7;</button>
         </div>
     </body>
 </html>
