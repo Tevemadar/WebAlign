@@ -465,9 +465,23 @@ and open the template in the editor.
             }
             function ouv_clear(){
                 if(!ready)return;
-                ouv=[0,atlas.ydim/2,atlas.zdim-1,
-                     atlas.xdim,0,0,
-                     0,0,-atlas.zdim];
+                switch(document.getElementById("mode").selectedIndex){
+                    case 0:
+                        ouv=[0,atlas.ydim/2,atlas.zdim-1,
+                             atlas.xdim,0,0,
+                             0,0,-atlas.zdim];
+                        break;
+                    case 1:
+                        ouv=[atlas.xdim/2,atlas.ydim-1,atlas.zdim-1,
+                             0,-atlas.ydim,0,
+                             0,0,-atlas.zdim];
+                        break;
+                    case 2:
+                        ouv=[0,atlas.ydim-1,atlas.zdim/2,
+                             0,-atlas.ydim,0,
+                             atlas.xdim,0,0];
+                        break;
+                }
                 imagenavi();
 //                drawimage();
 //                drawnavi();
@@ -1040,6 +1054,96 @@ and open the template in the editor.
             function imagenavi(){
                 drawimage();
                 drawnavi();
+                angles();
+            }
+            function angles(){
+                if(!ready)return;
+                let cross=(u,v)=>[
+                    u[1]*v[2]-u[2]*v[1],
+                    u[2]*v[0]-u[0]*v[2],
+                    u[0]*v[1]-u[1]*v[0]
+                ];
+                let dot=(u,v)=>u[0]*v[0]+u[1]*v[1]+u[2]*v[2];
+                let deg=x=>x*180/Math.PI;
+                let clamp=x=>Math.max(-1,Math.min(1,x));
+                let u=ouv.slice(3,6);
+                let v=ouv.slice(6);
+                normalize(u,0);
+                normalize(v,0);
+                let n=cross(u,v);
+                normalize(n,0);
+                let rot1,rot2,baseu;
+                switch(document.getElementById("mode").selectedIndex){
+                    case 0:
+                        rot1=Math.asin(clamp(n[2]));
+                        rot2=Math.atan2(n[0],n[1]);
+                        baseu=[Math.cos(rot2),-Math.sin(rot2),0];
+                        break;
+                    case 1:
+                        rot1=-Math.asin(clamp(n[2]));
+                        rot2=-Math.atan2(n[1],n[0]);
+                        baseu=[-Math.sin(rot2),-Math.cos(rot2),0];
+                        break;
+                    case 2:
+                        rot1=Math.asin(clamp(n[0]));
+                        rot2=-Math.atan2(n[1],n[2]);
+                        baseu=[0,-Math.cos(rot2),-Math.sin(rot2)];
+                        break;
+                }
+                let rot3=Math.acos(clamp(dot(u,baseu)))*Math.sign(dot(cross(u,baseu),n));
+                document.getElementById("rot1").value=deg(rot1).toFixed(2);
+                document.getElementById("rot2").value=deg(rot2).toFixed(2);
+                document.getElementById("rot3").value=deg(rot3).toFixed(2);
+                let res=JSON.stringify(n);
+                res+="\n"+JSON.stringify(u);
+                res+="\n"+JSON.stringify(v);
+//                res+="\n"+JSON.stringify(u);
+//                res+="\n"+JSON.stringify(baseu);
+                document.getElementById("log").innerText=res;
+            }
+            function docalc(){
+                let rot1=document.getElementById("rot1").valueAsNumber*Math.PI/180;
+                let rot2=document.getElementById("rot2").valueAsNumber*Math.PI/180;
+                let rot3=document.getElementById("rot3").valueAsNumber*Math.PI/180;
+                let scaladd=(u,s1,v,s2,t,i)=>{
+                    t[i]=u[0]*s1+v[0]*s2;
+                    t[i+1]=u[1]*s1+v[1]*s2;
+                    t[i+2]=u[2]*s1+v[2]*s2;
+                };
+//                let scal=(v,s)=>[s*v[0],s*v[1],s*v[2]];
+//                let add=(u,v,t,i)=>[u[0]+v[0],u[1]+v[1],u[2]+v[2]];
+                let u = 0;
+                let v = 0;
+                for (let i = 0; i < 3; i++) {
+                    ouv[i] += (ouv[i + 3] + ouv[i + 6]) / 2;
+                    u += ouv[i + 3] * ouv[i + 3];
+                    v += ouv[i + 6] * ouv[i + 6];
+                }
+                u = Math.sqrt(u);
+                v = Math.sqrt(v);
+                let baseu,basev;
+                switch(document.getElementById("mode").selectedIndex){
+                    case 0:
+                        baseu=[Math.cos(rot2),-Math.sin(rot2),0];
+                        basev=[Math.sin(rot1)*Math.sin(rot2),Math.sin(rot1)*Math.cos(rot2),-Math.cos(rot1)];
+                        break;
+                    case 1:
+                        baseu=[-Math.sin(rot2),-Math.cos(rot2),0];
+                        basev=[-Math.sin(rot1)*Math.cos(rot2),Math.sin(rot1)*Math.sin(rot2),-Math.cos(rot1)];
+                        break;
+                    case 2:
+                        baseu=[0,-Math.cos(rot2),-Math.sin(rot2)];
+                        basev=[Math.cos(rot1),Math.sin(rot1)*Math.sin(rot2),-Math.sin(rot1)*Math.cos(rot2)];
+                        break;
+                }
+                scaladd(baseu,Math.cos(rot3),basev,-Math.sin(rot3),ouv,3);
+                scaladd(baseu,Math.sin(rot3),basev,Math.cos(rot3),ouv,6);
+                for (let i = 0; i < 3; i++) {
+                    ouv[i + 3] *= u;
+                    ouv[i + 6] *= v;
+                    ouv[i] -= (ouv[i + 3] + ouv[i + 6]) / 2;
+                }
+                imagenavi();
             }
             function clickstep(coord,dir){
                 ouv[coord]+=document.getElementById("panstep").valueAsNumber*dir;
@@ -1067,18 +1171,14 @@ and open the template in the editor.
             function mainrot(dir){
                 const angle=document.getElementById("rotstep").valueAsNumber*dir*Math.PI/180;
                 const sincos=[Math.sin(angle),Math.cos(angle)];
-                for(let i=0;i<3;i++){
-                    ouv[i]+=ouv[i+3]/2+ouv[i+6]/2;
-                }
+                decomp(ouv);
                 let u=ouv.slice(3,6);
                 let v=ouv.slice(6);
                 for(let i=0;i<3;i++){
                     ouv[i+3]=u[i]*sincos[1]-v[i]*sincos[0];
                     ouv[i+6]=u[i]*sincos[0]+v[i]*sincos[1];
                 }
-                for(let i=0;i<3;i++){
-                    ouv[i]-=ouv[i+3]/2+ouv[i+6]/2;
-                }
+                recomp(ouv);
                 imagenavi();
             }
         </script>
@@ -1114,6 +1214,16 @@ and open the template in the editor.
             </div>
             <hr>
             <button onclick="save()">Save to bucket</button><button onclick="exprt()">Export overlays</button>
+            <hr>
+            <select id="mode" oninput="angles()">
+                <option>Coronal</option>
+                <option>Sagittal</option>
+                <option>Horizontal</option>
+            </select>
+            <input type="number" id="rot1" min="-90" max="90" step="0.1" oninput="docalc()">
+            <input type="number" id="rot2" min="-180" max="180" step="0.1" oninput="docalc()">
+            <input type="number" id="rot3" min="-180" max="180" step="0.1" oninput="docalc()">
+            <div id="log"></div>
         </div>
         <div id="hsiz" class="hsep" onmousedown="hresize(event)"></div>
         <div id="main">
