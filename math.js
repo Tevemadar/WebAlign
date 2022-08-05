@@ -99,3 +99,14 @@ function LinReg() {
         return a + b * x;
     };
 }
+
+let len3 = (v, i = 0) => Math.sqrt(v[i] * v[i] + v[i + 1] * v[i + 1] + v[i + 2] * v[i + 2]);
+let cross = (u, v) => [
+        u[1] * v[2] - u[2] * v[1],
+        u[2] * v[0] - u[0] * v[2],
+        u[0] * v[1] - u[1] * v[0]
+    ];
+let dot = (u, v) => u[0] * v[0] + u[1] * v[1] + u[2] * v[2];
+let deg = x => x * 180 / Math.PI;
+let rad = x => x * Math.PI / 180;
+let clamp = x => Math.max(-1, Math.min(1, x));
