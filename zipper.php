@@ -6,6 +6,7 @@ $validator="https://".$_SERVER["SERVER_NAME"]."/";
 strpos($referer,$validator) === 0 or die("!");
 
 $zipfile=tempnam(sys_get_temp_dir(), "zip");
+unlink($zipfile);
 if($_FILES["zip"]["size"]>0){
     move_uploaded_file($_FILES["zip"]["tmp_name"], $zipfile);
 }
