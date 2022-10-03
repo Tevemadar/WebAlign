@@ -1030,7 +1030,8 @@ and open the template in the editor.
                     dv.setUint32(1,slice.width,false);
                     dv.setUint32(5,slice.height,false);
                     for(let pos=0;pos<slice.data.length;pos++){
-                        dv.setUint16(9+pos*2,slice.data[pos],false);
+//                        dv.setUint16(9+pos*2,slice.data[pos],false);
+                        dv.setUint16(9+pos*2,atlas.hackmap[atlas.remap[slice.data[pos]]],false);
                     }
                     formdata.append("flat",new Blob([rebuf],{type:"application/octet-stream"}),image.flat);
                     zipfile=await fetch("zipper.php",{method:"POST",body:formdata}).then(response=>response.arrayBuffer());
