@@ -106,7 +106,9 @@ and open the template in the editor.
         </style>
         <script src="slicer.js"></script>
         <script src="math.js"></script>
+        <script src="zipstore.js"></script>
         <!--<script src="dzimage.js"></script>-->
+        <script src="segrle.js"></script>
         <script>
             let args=JSON.parse(decodeURIComponent(location.search.substring(1)));
             let bucket=args["clb-collab-id"];
@@ -1026,20 +1028,31 @@ and open the template in the editor.
             }
             async function exprt(){
                 popup("Exporting overlays");
-                let zipfile=new ArrayBuffer(0);
+                let date=new Date();
+                let te=new TextEncoder();
                 
-                let formdata=new FormData();
-                formdata.append("zip",new Blob([zipfile],{type:"application/octet-stream"}));
+                let ziplist=[];
+                
+//                let zipfile=new ArrayBuffer(0);
+                
+//                let formdata=new FormData();
+//                formdata.append("zip",new Blob([zipfile],{type:"application/octet-stream"}));
                 let descriptor={
                     target:series.atlas+".cutlas",
                     slices:images.map(image=>({filename:image.filename,width:image.width,height:image.height,anchoring:image.ouv}))
                 };
-                formdata.append("flat",new Blob([JSON.stringify(descriptor,null,1)],{type:"application/json"}),"anchorings.json");
-                zipfile=await fetch("zipper.php",{method:"POST",body:formdata}).then(response=>response.arrayBuffer());
+//                formdata.append("flat",new Blob([JSON.stringify(descriptor,null,1)],{type:"application/json"}),"anchorings.json");
+//                zipfile=await fetch("zipper.php",{method:"POST",body:formdata}).then(response=>response.arrayBuffer());
+
+                ziplist.push({
+                    name:"anchorings.json",
+                    date,
+                    data:te.encode(JSON.stringify(descriptor,null,1))
+                });
                 
                 for(let image of images){
-                    /*let*/ formdata=new FormData();
-                    formdata.append("zip",new Blob([zipfile],{type:"application/octet-stream"}));
+//                    /*let*/ formdata=new FormData();
+//                    formdata.append("zip",new Blob([zipfile],{type:"application/octet-stream"}));
                     
                     let slice=dataslice(image.ouv);
                     let rebuf=new ArrayBuffer(slice.data.byteLength+9);
@@ -1051,11 +1064,22 @@ and open the template in the editor.
 //                        dv.setUint16(9+pos*2,slice.data[pos],false);
                         dv.setUint16(9+pos*2,atlas.hackmap[atlas.remap[slice.data[pos]]],false);
                     }
-                    formdata.append("flat",new Blob([rebuf],{type:"application/octet-stream"}),image.flat);
-                    zipfile=await fetch("zipper.php",{method:"POST",body:formdata}).then(response=>response.arrayBuffer());
+//                    formdata.append("flat",new Blob([rebuf],{type:"application/octet-stream"}),image.flat);
+//                    zipfile=await fetch("zipper.php",{method:"POST",body:formdata}).then(response=>response.arrayBuffer());
+                    ziplist.push({
+                        name:image.flat,
+                        date,
+                        data:new Uint8Array(rebuf)
+                    });
                     
-                    formdata=new FormData();
-                    formdata.append("zip",new Blob([zipfile],{type:"application/octet-stream"}));
+                    ziplist.push({
+                        name:image.flat.substring(0,image.flat.length-5)+".seg",
+                        date,
+                        data:segrle(slice)
+                    });
+                    
+//                    formdata=new FormData();
+//                    formdata.append("zip",new Blob([zipfile],{type:"application/octet-stream"}));
                     
                     let canvas=document.createElement("canvas");
                     canvas.width=slice.width;
@@ -1063,10 +1087,8 @@ and open the template in the editor.
                     let ctx=canvas.getContext("2d");
                     let idata=ctx.createImageData(slice.width,slice.height);
                     let data=idata.data;
-                    let hack=new Set();
                     for(let pos=0;pos<slice.data.length;pos++){
                         let v=slice.data[pos];
-                        hack.add(v);
                         if(v!==0){
                             let l=atlas.labels[v];
                             data[pos*4]=l.r;
@@ -1075,14 +1097,19 @@ and open the template in the editor.
                             data[pos*4+3]=255;
                         }
                     }
-                    console.log(hack.size);
                     ctx.putImageData(idata,0,0);
-                    formdata.append("flat",await new Promise(resolve=>canvas.toBlob(blob=>resolve(blob))),image.flat+".png");
-                    zipfile=await fetch("zipper.php",{method:"POST",body:formdata}).then(response=>response.arrayBuffer());
+//                    formdata.append("flat",await new Promise(resolve=>canvas.toBlob(blob=>resolve(blob))),image.flat+".png");
+//                    zipfile=await fetch("zipper.php",{method:"POST",body:formdata}).then(response=>response.arrayBuffer());
+                    ziplist.push({
+                        name:image.flat.substring(0,image.flat.length-5)+".png",
+                        date,
+                        data:new Uint8Array(await new Promise(resolve=>canvas.toBlob(blob=>resolve(blob.arrayBuffer()))))
+                    });
                 }
                 
 //                let zipname=args["filename"].replace(".json",".zip");
 //                let upload = await fetch(`bucket.php?${argspack({filename:zipname,put:true})}`).then(response => response.json());
+                let zipfile=zipstore(ziplist);
                 let pos=filename.lastIndexOf(".");
                 let zipname=filename.substr(0,pos)+".zip";
                 let upload=await fetch(
