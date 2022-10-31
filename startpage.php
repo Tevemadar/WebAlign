@@ -28,23 +28,29 @@ $json["token"]=$token;
         <meta charset="UTF-8">
         <title></title>
         <script>
-            let bucket=<?php
-            $ch = curl_init(getenv("ebrains_bucket") . $json["clb-collab-id"] . "?delimiter=/");
-            curl_setopt_array($ch, array(
-                CURLOPT_HTTPHEADER => array(
-                    "Accept: application/json",
-                    "Authorization: Bearer " . $token
-                )
-            ));
-            $res = curl_exec($ch);
-            curl_close($ch);
-            ?>;
             let state=<?php echo json_encode($json);?>;
-            function startup(){
+            async function startup(){
+                let bucket=await fetch(
+                        `https://data-proxy.ebrains.eu/api/v1/buckets/${state["clb-collab-id"]}?delimiter=/`,{
+                            headers:{
+                                accept:"application/json",
+                                authorization:`Bearer ${state.token}`
+                            }
+                        }
+                    ).then(response=>response.json());
                 let tbody=document.getElementById("bucket-content");
+//                for(let item of bucket.objects)
+//                    if(item.content_type==="application/json")
+//                        tbody.innerHTML+="<tr><td><button onclick='clicky(event)'>"+item.name+"</button></td><td>"+item.bytes+"</td><td>"+item.last_modified+"</td></tr>";
                 for(let item of bucket.objects)
-                    if(item.content_type==="application/json")
-                        tbody.innerHTML+="<tr><td><a href='#"+item.name+"' onclick='clicky(event)'>"+item.name+"</a></td><td>"+item.bytes+"</td><td>"+item.last_modified+"</td></tr>";
+                    if(!item.hasOwnProperty("subdir") && item.name.endsWith(".waln"))
+                        tbody.innerHTML+="<tr><td><button onclick='clicky(event)'>"+item.name+"</button></td><td>"+item.bytes+"</td><td>"+item.last_modified+"</td></tr>";
+                for(let item of bucket.objects)
+                    if(!item.hasOwnProperty("subdir") && item.name.endsWith(".wwrp"))
+                        tbody.innerHTML+="<tr><td><button onclick='clicky(event)'>"+item.name+"</button></td><td>"+item.bytes+"</td><td>"+item.last_modified+"</td></tr>";
+//                for(let item of bucket.objects)
+//                    if(!item.hasOwnProperty("subdir") && item.name.endsWith(".json"))
+//                        tbody.innerHTML+="<tr><td><button onclick='clicky(event)'>"+item.name+"</button></td><td>"+item.bytes+"</td><td>"+item.last_modified+"</td></tr>";
             }
             function clicky(event){
                 state.filename=event.target.innerText;

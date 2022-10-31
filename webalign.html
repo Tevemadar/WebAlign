@@ -109,13 +109,8 @@ and open the template in the editor.
         <!--<script src="dzimage.js"></script>-->
         <script>
             let args=JSON.parse(decodeURIComponent(location.search.substring(1)));
-            function argspack(pack){
-                return encodeURIComponent(JSON.stringify({
-                    collab:args["clb-collab-id"],
-                    token:args.token,
-                    ...pack
-                }));
-            };
+            let bucket=args["clb-collab-id"];
+            let filename=args.filename;
             let atlas={xdim:1,ydim:1,zdim:1};
             let series;
             let images=[];
@@ -127,8 +122,17 @@ and open the template in the editor.
                 popup("Loading data");
                 window.addEventListener("resize",resize);
                 resize();
-                let download=await fetch(`bucket.php?${argspack({filename:args.filename})}`).then(response=>response.json());
-                series=await fetch(download.url).then(response=>response.json());
+                let url=await fetch(
+                        `https://data-proxy.ebrains.eu/api/v1/buckets/${bucket}/${filename}?redirect=false`,{
+                            headers:{
+                                accept:"application/json",
+                                authorization:`Bearer ${args.token}`
+                            }
+                        }
+                    ).then(response=>response.json()).then(json=>json.url);
+                series=await fetch(url).then(response=>response.json());
+                if(series.hasOwnProperty("mode"))
+                    document.getElementById("mode").selectedIndex=series.mode;
                 console.log(Date.now()-start,"Got series");
                 /*let*/ atlas=new Promise(resolve=>new Worker("getlas.js?"+series.atlas)
                         .onmessage=event=>{
@@ -277,7 +281,6 @@ and open the template in the editor.
             let stripdrawing=false;
             let stripredraw=false;
             async function drawstrip(){
-//            function drawstrip(){
                 if(!ready)return;
                 stripredraw=false;
                 if(stripdrawing){
@@ -330,11 +333,14 @@ and open the template in the editor.
                             let i=document.createElement("img");
                             i.onload=()=>{image.icon=i;drawstrip();};
                             i.crossOrigin="anonymous";
-//                            i.src=image.base+l+"/0_0."+image.format;
-//                            i.src=await fetch("bucket_fast.php?"+image.base+l+"/0_0."+image.format)
-                            i.src=await fetch(`bucket_fast.php?${argspack({filename:image.base+l+"/0_0."+image.format})}`)
-                                    .then(result=>result.json())
-                                    .then(json=>json.url);
+                            i.src=await fetch(
+                                `https://data-proxy.ebrains.eu/api/v1/buckets/${image.base+l}/0_0.${image.format}?redirect=false`,{
+                                    headers:{
+                                        accept:"application/json",
+                                        authorization:`Bearer ${args.token}`
+                                    }
+                                }
+                            ).then(response=>response.json()).then(json=>json.url);
                         }
                     }
                 
@@ -521,9 +527,14 @@ and open the template in the editor.
                 //let xx=x,yy=y;
                 for(let x=0;x<xtiles;x++)
                     for(let y=0;y<ytiles;y++)
-//                        loads.push(fetch("bucket_fast.php?"+base+maxlevel+"/"+x+"_"+y+"."+format)
-                        loads.push(fetch(`bucket_fast.php?${argspack({filename:base+maxlevel+"/"+x+"_"+y+"."+format})}`)
-                        .then(result=>result.json()).then(json=>new Promise((resolve,reject)=>{
+                        loads.push(fetch(
+                            `https://data-proxy.ebrains.eu/api/v1/buckets/${base+maxlevel}/${x}_${y}.${format}?redirect=false`,{
+                                headers:{
+                                    accept:"application/json",
+                                    authorization:`Bearer ${args.token}`
+                                }
+                            }
+                        ).then(result=>result.json()).then(json=>new Promise((resolve,reject)=>{
                             let tile=document.createElement("img");
                             tile.onerror=reject;
                             tile.onload=()=>{
@@ -983,8 +994,15 @@ and open the template in the editor.
                     else
                         delete series.sections[i].ouv;
                 }
-//                let upload = await fetch("bucket.php?put=true&filename=" + args.get("filename")).then(response => response.json());
-                let upload = await fetch(`bucket.php?${argspack({filename:args.filename,put:true})}`).then(response => response.json());
+                let upload=await fetch(
+                        `https://data-proxy.ebrains.eu/api/v1/buckets/${bucket}/${filename}`,{
+                            method: "PUT",
+                            headers:{
+                                accept:"application/json",
+                                authorization:`Bearer ${args.token}`
+                            }
+                        }
+                    ).then(response=>response.json());
                 if (!upload.hasOwnProperty("url")) {
                     alert("Can't save: "+JSON.stringify(upload));
                     return;
@@ -992,7 +1010,7 @@ and open the template in the editor.
                 await fetch(upload.url, {
                     method: "PUT",
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/x.webalign'
                     },
                     body: JSON.stringify(series)
                 });
@@ -1035,10 +1053,47 @@ and open the template in the editor.
                     }
                     formdata.append("flat",new Blob([rebuf],{type:"application/octet-stream"}),image.flat);
                     zipfile=await fetch("zipper.php",{method:"POST",body:formdata}).then(response=>response.arrayBuffer());
+                    
+                    formdata=new FormData();
+                    formdata.append("zip",new Blob([zipfile],{type:"application/octet-stream"}));
+                    
+                    let canvas=document.createElement("canvas");
+                    canvas.width=slice.width;
+                    canvas.height=slice.height;
+                    let ctx=canvas.getContext("2d");
+                    let idata=ctx.createImageData(slice.width,slice.height);
+                    let data=idata.data;
+                    let hack=new Set();
+                    for(let pos=0;pos<slice.data.length;pos++){
+                        let v=slice.data[pos];
+                        hack.add(v);
+                        if(v!==0){
+                            let l=atlas.labels[v];
+                            data[pos*4]=l.r;
+                            data[pos*4+1]=l.g;
+                            data[pos*4+2]=l.b;
+                            data[pos*4+3]=255;
+                        }
+                    }
+                    console.log(hack.size);
+                    ctx.putImageData(idata,0,0);
+                    formdata.append("flat",await new Promise(resolve=>canvas.toBlob(blob=>resolve(blob))),image.flat+".png");
+                    zipfile=await fetch("zipper.php",{method:"POST",body:formdata}).then(response=>response.arrayBuffer());
                 }
                 
-                let zipname=args["filename"].replace(".json",".zip");
-                let upload = await fetch(`bucket.php?${argspack({filename:zipname,put:true})}`).then(response => response.json());
+//                let zipname=args["filename"].replace(".json",".zip");
+//                let upload = await fetch(`bucket.php?${argspack({filename:zipname,put:true})}`).then(response => response.json());
+                let pos=filename.lastIndexOf(".");
+                let zipname=filename.substr(0,pos)+".zip";
+                let upload=await fetch(
+                        `https://data-proxy.ebrains.eu/api/v1/buckets/${bucket}/${zipname}`,{
+                            method: "PUT",
+                            headers:{
+                                accept:"application/json",
+                                authorization:`Bearer ${args.token}`
+                            }
+                        }
+                    ).then(response=>response.json());
                 if (!upload.hasOwnProperty("url")) {
                     alert("Can't save: "+JSON.stringify(upload));
                     return;
@@ -1059,7 +1114,8 @@ and open the template in the editor.
             }
             function angles(){
                 if(!ready)return;
-                let rots=rot123uvfrom(ouv,document.getElementById("mode").selectedIndex);
+                series.mode=document.getElementById("mode").selectedIndex;
+                let rots=rot123uvfrom(ouv,series.mode);
                 document.getElementById("rot1").value=deg(rots[0]).toFixed(2);
                 document.getElementById("rot2").value=deg(rots[1]).toFixed(2);
                 document.getElementById("rot3").value=deg(rots[2]).toFixed(2);
