@@ -199,7 +199,9 @@ and open the template in the editor.
                 propagate();
                 
                 //stripidx=Math.min(images.length-1,(images.length>>1)+1);
-                activateslice(images.length>>1);
+                if(!series.hasOwnProperty("current"))
+                    series.current=images.length>>1;
+                activateslice(series.current);
                 strippos=images[stripidx].fsx-(window.innerWidth-images[stripidx].fsw)/2;
                 console.log(images[stripidx]);
                 console.log(strippos);
@@ -445,6 +447,7 @@ and open the template in the editor.
 
             let ouv;
             function activateslice(idx){
+                series.current=idx;
                 stripidx=idx;
                 marker=false;
                 let image=images[idx];
@@ -1050,7 +1053,9 @@ and open the template in the editor.
                     data:te.encode(JSON.stringify(descriptor,null,1))
                 });
                 
-                for(let image of images){
+                for(let i=0;i<images.length;i++){
+                    let image=images[i];
+                    popup(`${i+1}/${images.length} ${image.filename}`);
 //                    /*let*/ formdata=new FormData();
 //                    formdata.append("zip",new Blob([zipfile],{type:"application/octet-stream"}));
                     
