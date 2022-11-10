@@ -103,15 +103,33 @@ and open the template in the editor.
             /*input[type=range]{*/
                 /*width:100px;*/
             /*}*/
+            #help{
+                position: absolute;
+                right: 0;
+                display: none;
+                width: 500px;
+                background: #F0F0F0;
+                padding: 10px;
+            }
+            kbd {
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                padding: 0.1em 0.5em;
+                margin: 0 0.2em;
+                box-shadow: 0 1px 0px rgba(0, 0, 0, 0.2), 0 0 0 2px #fff inset;
+                background-color: #f7f7f7;
+            }        
         </style>
         <script src="slicer.js"></script>
         <script src="math.js"></script>
         <script src="zipstore.js"></script>
         <!--<script src="dzimage.js"></script>-->
         <script src="segrle.js"></script>
+        <script src="dppick.js"></script>
         <script>
             let args=JSON.parse(decodeURIComponent(location.search.substring(1)));
-            let bucket=args["clb-collab-id"];
+            const bucket=args["clb-collab-id"];
+            const token=args.token;
             let filename=args.filename;
             let atlas={xdim:1,ydim:1,zdim:1};
             let series;
@@ -128,7 +146,7 @@ and open the template in the editor.
                         `https://data-proxy.ebrains.eu/api/v1/buckets/${bucket}/${filename}?redirect=false`,{
                             headers:{
                                 accept:"application/json",
-                                authorization:`Bearer ${args.token}`
+                                authorization:`Bearer ${token}`
                             }
                         }
                     ).then(response=>response.json()).then(json=>json.url);
@@ -341,7 +359,7 @@ and open the template in the editor.
                                 `https://data-proxy.ebrains.eu/api/v1/buckets/${image.base+l}/0_0.${image.format}?redirect=false`,{
                                     headers:{
                                         accept:"application/json",
-                                        authorization:`Bearer ${args.token}`
+                                        authorization:`Bearer ${token}`
                                     }
                                 }
                             ).then(response=>response.json()).then(json=>json.url);
@@ -536,7 +554,7 @@ and open the template in the editor.
                             `https://data-proxy.ebrains.eu/api/v1/buckets/${base+maxlevel}/${x}_${y}.${format}?redirect=false`,{
                                 headers:{
                                     accept:"application/json",
-                                    authorization:`Bearer ${args.token}`
+                                    authorization:`Bearer ${token}`
                                 }
                             }
                         ).then(result=>result.json()).then(json=>new Promise((resolve,reject)=>{
@@ -992,6 +1010,28 @@ and open the template in the editor.
                 
             }
             async function save(){
+                if(filename.endsWith(".waln"))
+                    dosave();
+                else
+                    saveas();
+            }
+            async function saveas(){
+                const choice=await dppick({
+                    bucket,
+                    token,
+                    title:"Save as...",
+                    path:filename.substring(0,filename.lastIndexOf("/")+1),
+                    extensions:[".waln"],
+                    create:".waln",
+                    createdefault:filename.substring(filename.lastIndexOf("/")+1),
+                    createbutton:"Save"
+                });
+                if(choice.cancel)
+                    return;
+                filename=choice.create || choice.pick;
+                dosave();
+            }
+            async function dosave(){
                 for(let i=0;i<images.length;i++){
                     let image=images[i];
                     if(image.anchored)
@@ -1004,7 +1044,7 @@ and open the template in the editor.
                             method: "PUT",
                             headers:{
                                 accept:"application/json",
-                                authorization:`Bearer ${args.token}`
+                                authorization:`Bearer ${token}`
                             }
                         }
                     ).then(response=>response.json());
@@ -1122,7 +1162,7 @@ and open the template in the editor.
                             method: "PUT",
                             headers:{
                                 accept:"application/json",
-                                authorization:`Bearer ${args.token}`
+                                authorization:`Bearer ${token}`
                             }
                         }
                     ).then(response=>response.json());
@@ -1266,14 +1306,19 @@ and open the template in the editor.
                 recomp(ouv);
                 imagenavi();
             }
+            function toggleHelp(){
+                const help=document.getElementById("help");
+                help.style.display=help.style.display!=="block"?"block":"none";
+            }
         </script>
     </head>
     <body onload="startup()" onmouseup="mup(event)" onmousemove="mmove(event)">
         <div id="controls">
-            <span id="image"><br></span><br>
+            <span id="image"><br></span><button style="float: right" onclick="toggleHelp()">?</button><br>
             <span id="atlas"></span>
             <hr>
-            <button onclick="store()">Store</button><button onclick="restore()">Restore</button><button onclick="ouv_clear()">Clear</button>
+            Bucket:
+            <button onclick="save()">Save</button><button onclick="saveas()">Save as...</button><button onclick="exprt()">Export overlays</button>
             <div class="ctrlrow">
             <select id="modality" oninput="drawimage();drawstrip();drawnavi();" disabled>
                 <option>Segmentation</option>
@@ -1298,7 +1343,7 @@ and open the template in the editor.
             <input id="contrast" type="range" min="0" max="255" step="1" value="255" oninput="imagenavi();drawstrip();">
             </div>
             <hr>
-            <button onclick="save()">Save to bucket</button><button onclick="exprt()">Export overlays</button>
+            <button onclick="store()">Store</button><button onclick="restore()">Restore</button><button onclick="ouv_clear()">Clear</button>
             <hr>
             <select id="mode" oninput="angles()">
                 <option>Coronal</option>
@@ -1364,6 +1409,29 @@ and open the template in the editor.
             <button onclick="clickstep(2,-1)">&#x25bc;</button>
             <button onclick="clickrot(0,2,1)">&#x21b6;</button>
             <button onclick="clickrot(0,2,-1)">&#x21b7;</button>
+        </div>
+        <div id="help">
+            Navigation views:
+            <ul>
+                <li>Move overlay via dragging the yellow dot with the mouse</li>
+                <li>Rotate overlay via dragging anywhere else than the yellow dot</li>
+                <li>Use the buttons for stepwise movement and rotation</li>
+                <li>Movement and rotation steps are set in the left panel (&#x2194;&#x2195; and &#x21BA;)</li>
+            </ul>
+            Main view:
+            <ul>
+                <li>Pan overlay via mouse drag</li>
+                <li>Use the buttons for stepwise panning and rotation (around section midpoint)</li>
+                <li>Panning and rotation steps are set in the left panel (&#x2194;&#x2195; and &#x21BA;)</li>
+                <li>Place fixed point for resizing and rotation by pressing <kbd>Space</kbd></li>
+                <li>Select horizontal resize mode using <kbd>Left</kbd> or <kbd>Right</kbd> arrow keys</li>
+                <li>Select vertical resize mode using <kbd>Up</kbd> or <kbd>Down</kbd> arrow keys</li>
+                <li>Select rotation mode using <kbd>PageUp</kbd> or <kbd>PageDown</kbd> keys</li>
+                <li>Move the mouse pointer away from the fixed point, and apply resizing/rotation via mouse drag</li>
+                <li>After releasing the mouse button, operating mode will automatically reset to panning</li>
+                <li>Press <kbd>Esc</kbd> to make the fixed point marker disappear</li>
+            </ul>
+            <a href="https://quint-webtools.readthedocs.io/en/latest/WebAlign.html" target="_blank">Documentation</a><br>
         </div>
     </body>
 </html>
