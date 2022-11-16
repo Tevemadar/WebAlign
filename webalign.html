@@ -131,6 +131,12 @@ and open the template in the editor.
             const bucket=args["clb-collab-id"];
             const token=args.token;
             let filename=args.filename;
+            async function dpurlget(bucketfile){
+                return fetch(
+                    `https://data-proxy.ebrains.eu/api/v1/buckets/${bucketfile}?redirect=false`,
+                    {headers: {authorization: `Bearer ${token}`}}).then(response => response.json());
+            }
+            
             let atlas={xdim:1,ydim:1,zdim:1};
             let series;
             let images=[];
@@ -142,14 +148,7 @@ and open the template in the editor.
                 popup("Loading data");
                 window.addEventListener("resize",resize);
                 resize();
-                let url=await fetch(
-                        `https://data-proxy.ebrains.eu/api/v1/buckets/${bucket}/${filename}?redirect=false`,{
-                            headers:{
-                                accept:"application/json",
-                                authorization:`Bearer ${token}`
-                            }
-                        }
-                    ).then(response=>response.json()).then(json=>json.url);
+                const url=await dpurlget(bucket+"/"+filename).then(json=>json.url);
                 series=await fetch(url).then(response=>response.json());
                 if(series.hasOwnProperty("mode"))
                     document.getElementById("mode").selectedIndex=series.mode;
@@ -355,14 +354,7 @@ and open the template in the editor.
                             let i=document.createElement("img");
                             i.onload=()=>{image.icon=i;drawstrip();};
                             i.crossOrigin="anonymous";
-                            i.src=await fetch(
-                                `https://data-proxy.ebrains.eu/api/v1/buckets/${image.base+l}/0_0.${image.format}?redirect=false`,{
-                                    headers:{
-                                        accept:"application/json",
-                                        authorization:`Bearer ${token}`
-                                    }
-                                }
-                            ).then(response=>response.json()).then(json=>json.url);
+                            i.src=await dpurlget(image.base+l+"/0_0."+image.format).then(json=>json.url);
                         }
                     }
                 
@@ -550,25 +542,19 @@ and open the template in the editor.
                 //let xx=x,yy=y;
                 for(let x=0;x<xtiles;x++)
                     for(let y=0;y<ytiles;y++)
-                        loads.push(fetch(
-                            `https://data-proxy.ebrains.eu/api/v1/buckets/${base+maxlevel}/${x}_${y}.${format}?redirect=false`,{
-                                headers:{
-                                    accept:"application/json",
-                                    authorization:`Bearer ${token}`
-                                }
-                            }
-                        ).then(result=>result.json()).then(json=>new Promise((resolve,reject)=>{
-                            let tile=document.createElement("img");
-                            tile.onerror=reject;
-                            tile.onload=()=>{
-                                ctx.drawImage(tile,x*tilesize-(x===0?0:overlap),y*tilesize-(y===0?0:overlap));
-                                //if(wcopy===mainw && hcopy===mainh && idx===stripidx)
-                                //    document.getElementById("maincnv").getContext("2d").drawImage(fullcanvas,xx,yy,w,h);
-                                resolve();
-                            };
-                            tile.crossOrigin="anonymous";
-                            tile.src=json.url;
-                        })));
+                        loads.push(dpurlget(`${base+maxlevel}/${x}_${y}.${format}`)
+                            .then(json=>new Promise((resolve,reject)=>{
+                                let tile=document.createElement("img");
+                                tile.onerror=reject;
+                                tile.onload=()=>{
+                                    ctx.drawImage(tile,x*tilesize-(x===0?0:overlap),y*tilesize-(y===0?0:overlap));
+                                    //if(wcopy===mainw && hcopy===mainh && idx===stripidx)
+                                    //    document.getElementById("maincnv").getContext("2d").drawImage(fullcanvas,xx,yy,w,h);
+                                    resolve();
+                                };
+                                tile.crossOrigin="anonymous";
+                                tile.src=json.url;
+                            })));
 //                        loads.push(new Promise((resolve,reject)=>{
 //                            let tile=document.createElement("img");
 //                            tile.onerror=reject;
@@ -1023,7 +1009,7 @@ and open the template in the editor.
                     path:filename.substring(0,filename.lastIndexOf("/")+1),
                     extensions:[".waln"],
                     create:".waln",
-                    createdefault:filename.substring(filename.lastIndexOf("/")+1),
+                    createdefault:filename.slice(filename.lastIndexOf("/")+1,-5)+".waln",
                     createbutton:"Save"
                 });
                 if(choice.cancel)
