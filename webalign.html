@@ -474,6 +474,19 @@ and open the template in the editor.
                 let image=images[stripidx];
                 image.ouv=ouv.slice();
                 image.anchored=true;
+
+                delete series.sections[stripidx].markers;
+                let idx=stripidx-1;
+                while(idx>0 && !images[idx].anchored){
+                    delete series.sections[idx].markers;
+                    idx--;
+                }
+                idx=stripidx+1;
+                while(idx<images.length && !images[idx].anchored){
+                    delete series.sections[idx].markers;
+                    idx++;
+                }
+
                 propagate();
                 drawstrip();
             }
@@ -1067,7 +1080,7 @@ and open the template in the editor.
 //                let formdata=new FormData();
 //                formdata.append("zip",new Blob([zipfile],{type:"application/octet-stream"}));
                 let descriptor={
-                    target:series.atlas+".cutlas",
+                    target:series.atlas,//+".cutlas",
                     slices:images.map(image=>({filename:image.filename,width:image.width,height:image.height,anchoring:image.ouv}))
                 };
 //                formdata.append("flat",new Blob([JSON.stringify(descriptor,null,1)],{type:"application/json"}),"anchorings.json");
@@ -1102,7 +1115,8 @@ and open the template in the editor.
                         date,
                         data:new Uint8Array(rebuf)
                     });
-                    
+
+                    slice.aid=series.atlas;
                     ziplist.push({
                         name:image.flat.substring(0,image.flat.length-5)+".seg",
                         date,
