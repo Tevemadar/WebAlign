@@ -523,8 +523,10 @@ and open the template in the editor.
             
             let mainimg=false;
             let marker=false;
+            let slice=false;
             async function drawimage(){
                 if(!ready)return;
+                slice=false;
                 let idx=stripidx;
                 let {width,height,tilesize,overlap,format,base,maxlevel,fullcanvas/*,ouv*/}=images[idx];
                 let x=0,y=0;
@@ -598,7 +600,8 @@ and open the template in the editor.
                         alpha=-alpha;
                     else
                         alpha=parseInt(mo.value.substring(1),16);
-                    drawslice(ouv,ctx,x,y,w,h,alpha);
+                    slice={...drawslice(ouv,ctx,x,y,w,h,alpha),x,y,w,h};
+                    drawpop();
                     if(marker){
                         ctx.strokeStyle="black";
                         ctx.lineWidth=2;
@@ -635,6 +638,51 @@ and open the template in the editor.
                         ctx.stroke();
                     }
                 }
+            }
+            
+            let drawpopscaping=false;
+            let drawpopdata=0;
+            function drawpop() {
+                if(!slice)return;
+                const x=Math.round((mainx-slice.x)*slice.width/slice.w);
+                const y=Math.round((mainy-slice.y)*slice.height/slice.h);
+                const out=x<0 || y<0 || x>=slice.width || y>=slice.height;
+                const d=out?0:slice.data[x+y*slice.width];
+                let newscaping=drawpopscaping;
+                if(mainy<mainh/3)
+                    newscaping=false;
+                if(mainy>mainh*2/3)
+                    newscaping=true;
+                if(d===0){
+                    drawpopscaping=newscaping;
+                    if(drawpopdata!==0){
+                        drawpopdata=0;
+                        drawimage();
+                    }
+                }else{
+                    if(newscaping!==drawpopscaping){
+                        drawpopscaping=newscaping;
+                        drawpopdata=0;
+                        drawimage();
+                    }else if(drawpopdata!==d){
+                        drawpopdata=d;
+                        const pop=atlas.labels[d];
+                        const ctx=document.getElementById("maincnv").getContext("2d");
+                        ctx.fillStyle = "rgb(" + pop.r + "," + pop.g + "," + pop.b + ")";
+                        if (drawpopscaping)
+                            ctx.fillRect(0, 0, mainw, 60);
+                        else
+                            ctx.fillRect(0, mainh - 60, mainw, 60);
+                        ctx.font = "40px sans-serif";
+                        ctx.fillStyle = "#000000";
+                        ctx.textAlign = "center";
+                        ctx.textBaseline = "middle";
+                        if (drawpopscaping)
+                            ctx.fillText(pop.name, mainw / 2, 30);
+                        else
+                            ctx.fillText(pop.name, mainw / 2, mainh - 30);
+                                }
+                            }
             }
             
             let navw=0;
@@ -781,10 +829,11 @@ and open the template in the editor.
                     drag.type="hrot";
             }
 
-            let mainx,mainy;
+            let mainx=-1,mainy=-1;
             function mainmove(event){
                 mainx=event.offsetX;
                 mainy=event.offsetY;
+                drawpop();
             }
             function maindrag(event){
                 drag={type:"mdrag",x:event.offsetX,y:event.offsetY};
@@ -1075,17 +1124,10 @@ and open the template in the editor.
                 
                 let ziplist=[];
                 
-//                let zipfile=new ArrayBuffer(0);
-                
-//                let formdata=new FormData();
-//                formdata.append("zip",new Blob([zipfile],{type:"application/octet-stream"}));
                 let descriptor={
-                    target:series.atlas,//+".cutlas",
+                    target:series.atlas,
                     slices:images.map(image=>({filename:image.filename,width:image.width,height:image.height,anchoring:image.ouv}))
                 };
-//                formdata.append("flat",new Blob([JSON.stringify(descriptor,null,1)],{type:"application/json"}),"anchorings.json");
-//                zipfile=await fetch("zipper.php",{method:"POST",body:formdata}).then(response=>response.arrayBuffer());
-
                 ziplist.push({
                     name:"anchorings.json",
                     date,
@@ -1095,26 +1137,21 @@ and open the template in the editor.
                 for(let i=0;i<images.length;i++){
                     let image=images[i];
                     popup(`${i+1}/${images.length} ${image.filename}`);
-//                    /*let*/ formdata=new FormData();
-//                    formdata.append("zip",new Blob([zipfile],{type:"application/octet-stream"}));
                     
                     let slice=dataslice(image.ouv);
-                    let rebuf=new ArrayBuffer(slice.data.byteLength+9);
-                    let dv=new DataView(rebuf);
-                    dv.setUint8(0,2);
-                    dv.setUint32(1,slice.width,false);
-                    dv.setUint32(5,slice.height,false);
-                    for(let pos=0;pos<slice.data.length;pos++){
-//                        dv.setUint16(9+pos*2,slice.data[pos],false);
-                        dv.setUint16(9+pos*2,atlas.hackmap[atlas.remap[slice.data[pos]]],false);
-                    }
-//                    formdata.append("flat",new Blob([rebuf],{type:"application/octet-stream"}),image.flat);
-//                    zipfile=await fetch("zipper.php",{method:"POST",body:formdata}).then(response=>response.arrayBuffer());
-                    ziplist.push({
-                        name:image.flat,
-                        date,
-                        data:new Uint8Array(rebuf)
-                    });
+//                    let rebuf=new ArrayBuffer(slice.data.byteLength+9);
+//                    let dv=new DataView(rebuf);
+//                    dv.setUint8(0,2);
+//                    dv.setUint32(1,slice.width,false);
+//                    dv.setUint32(5,slice.height,false);
+//                    for(let pos=0;pos<slice.data.length;pos++){
+//                        dv.setUint16(9+pos*2,atlas.hackmap[atlas.remap[slice.data[pos]]],false);
+//                    }
+//                    ziplist.push({
+//                        name:image.flat,
+//                        date,
+//                        data:new Uint8Array(rebuf)
+//                    });
 
                     slice.aid=series.atlas;
                     ziplist.push({
@@ -1122,9 +1159,6 @@ and open the template in the editor.
                         date,
                         data:segrle(slice)
                     });
-                    
-//                    formdata=new FormData();
-//                    formdata.append("zip",new Blob([zipfile],{type:"application/octet-stream"}));
                     
                     let canvas=document.createElement("canvas");
                     canvas.width=slice.width;
@@ -1143,8 +1177,6 @@ and open the template in the editor.
                         }
                     }
                     ctx.putImageData(idata,0,0);
-//                    formdata.append("flat",await new Promise(resolve=>canvas.toBlob(blob=>resolve(blob))),image.flat+".png");
-//                    zipfile=await fetch("zipper.php",{method:"POST",body:formdata}).then(response=>response.arrayBuffer());
                     ziplist.push({
                         name:image.flat.substring(0,image.flat.length-5)+".png",
                         date,
@@ -1152,8 +1184,6 @@ and open the template in the editor.
                     });
                 }
                 
-//                let zipname=args["filename"].replace(".json",".zip");
-//                let upload = await fetch(`bucket.php?${argspack({filename:zipname,put:true})}`).then(response => response.json());
                 let zipfile=zipstore(ziplist);
                 let pos=filename.lastIndexOf(".");
                 let zipname=filename.substr(0,pos)+".zip";
@@ -1371,7 +1401,7 @@ and open the template in the editor.
                     onmousemove="mainmove(event)"
                     onkeydown="maindown(event)"
                     onmouseover="event.target.focus()"
-                    onmouseout="event.target.blur()"></canvas>
+                    onmouseout="event.target.blur();mainmove(event)"></canvas>
         </div>
         <div id="hsep" class="hsep"></div>
         <div id="navi">
@@ -1411,6 +1441,7 @@ and open the template in the editor.
             <button onclick="clickrot(0,2,-1)">&#x21b7;</button>
         </div>
         <div id="help">
+            <div style="text-align: center; width: 100%;">WebAlign v0.7</div><br>
             Navigation views:
             <ul>
                 <li>Move overlay via dragging the yellow dot with the mouse</li>
