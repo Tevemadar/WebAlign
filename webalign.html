@@ -690,7 +690,11 @@ and open the template in the editor.
                             ctx.fillRect(0, 0, mainw, 60);
                         else
                             ctx.fillRect(0, mainh - 60, mainw, 60);
-                        ctx.font = "40px sans-serif";
+                        let fontsize = 40;
+                        do {
+                            ctx.font = `${fontsize}px sans-serif`;
+                            fontsize--;
+                        } while (ctx.measureText(pop.name).width > mainw - 20 && fontsize > 1);
                         ctx.fillStyle = "#000000";
                         ctx.textAlign = "center";
                         ctx.textBaseline = "middle";
@@ -1136,7 +1140,6 @@ and open the template in the editor.
                 document.getElementById("popup").hidden = true;
             }
             async function exprt() {
-                popup("Exporting overlays");
                 let date = new Date();
                 let te = new TextEncoder();
 
@@ -1203,8 +1206,27 @@ and open the template in the editor.
                 }
 
                 let zipfile = zipstore(ziplist);
-                let pos = filename.lastIndexOf(".");
-                let zipname = filename.substr(0, pos) + ".zip";
+
+//                let pos = filename.lastIndexOf(".");
+//                let zipname = filename.substr(0, pos) + ".zip";
+
+                const choice = await dppick({
+                    bucket,
+                    token,
+                    title: "Export overlays...",
+                    path: filename.substring(0, filename.lastIndexOf("/") + 1),
+                    extensions: [".zip"],
+                    create: ".zip",
+                    createdefault: filename.slice(filename.lastIndexOf("/") + 1, -5) + ".zip",
+                    createbutton: "Export"
+                });
+                if (choice.cancel) {
+                    cover();
+                    return;
+                }
+                let zipname = choice.create || choice.pick;
+
+                popup("Uploading overlays");
                 let upload = await fetch(
                         `https://data-proxy.ebrains.eu/api/v1/buckets/${bucket}/${zipname}`, {
                             method: "PUT",
