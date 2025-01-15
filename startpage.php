@@ -80,6 +80,7 @@ $json["token"]=$token;
                 trycollect();
             }
             function cancel(){
+                delete state.filename;
                 document.getElementById("newseries").hidden=true;
                 startup();
             }
