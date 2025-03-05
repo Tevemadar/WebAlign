@@ -228,7 +228,8 @@ and open the template in the editor.
                 for (let image of images) {
                     if (image.hasOwnProperty("ouv"))
                         image.anchored = true;
-                    image.snr = parseInt(image.filename.match(/_s(\d+)/)[1]);
+                    if (!image.hasOwnProperty("snr"))
+                        image.snr = parseInt(image.filename.match(/_s(\d+)/)[1]);
                 }
                 propagate();
 
