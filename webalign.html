@@ -702,6 +702,7 @@ and open the template in the editor.
 
                 propagate();
                 drawstrip();
+                updateaux();
             }
             function apply_xdo() {
                 document.getElementById("undo").disabled = undo_pos === 0;
@@ -720,6 +721,7 @@ and open the template in the editor.
 
                 imagenavi();
                 drawstrip();
+                updateaux();
             }
             function undo() {
                 undo_pos--;
@@ -1531,6 +1533,49 @@ and open the template in the editor.
                 const help = document.getElementById("help");
                 help.style.display = help.style.display !== "block" ? "block" : "none";
             }
+
+            function msgHandler(event){
+                if(event.data==="ready.")
+                    updateaux();
+                else
+                    activateslice(event.data);
+//                console.log(event.data,typeof event.data);
+            }
+            addEventListener("message",msgHandler,false);
+
+            const aux_name=Date.now().toString();
+            let aux_wnd=false;
+            addEventListener("beforeunload",()=>aux_wnd && aux_wnd.close());
+            function checkaux(){
+                if(aux_wnd && aux_wnd.closed)
+                    aux_wnd=false;
+                return aux_wnd;
+            }
+            
+            function updateaux(){
+                if(!checkaux())
+                    return;
+                aux_wnd.postMessage({
+                    mode:series.mode,
+                    idx:series.current,
+            sections:images.map(section=>({
+                    filename:section.filename,
+                    width:section.width,
+                    height:section.height,
+                    snr:section.snr,
+                    ouv:section.ouv,
+                    anchored:section.anchored
+                }))});
+            }
+            
+            function auxwnd() {
+                if(aux_wnd && aux_wnd.closed)
+                    aux_wnd=false;
+                if(aux_wnd)
+                    aux_wnd.focus();
+                else
+                    aux_wnd=open("diagrams.html",aux_name);
+            }
         </script>
     </head>
     <body onload="startup()" onmouseup="mup(event)" onmousemove="mmove(event)">
@@ -1565,7 +1610,7 @@ and open the template in the editor.
             </div>
             <hr>
             <!--<button onclick="store()">Store</button><button onclick="restore()">Restore</button><button onclick="ouv_clear()">Clear</button>-->
-            <button id="undo" onclick="undo()">Undo</button><button id="redo" onclick="redo()">Redo</button><button onclick="ouv_clear()">Clear</button>
+            <button id="undo" onclick="undo()">Undo</button><button id="redo" onclick="redo()">Redo</button><!--<button onclick="ouv_clear()">Clear</button>-->
             <hr>
             <select id="mode" oninput="angles()">
                 <option>Coronal</option>
@@ -1575,7 +1620,8 @@ and open the template in the editor.
             <input type="number" id="rot1" min="-90" max="90" step="0.1" oninput="docalc()">
             <input type="number" id="rot2" min="-180" max="180" step="0.1" oninput="docalc()">
             <input type="number" id="rot3" min="-180" max="180" step="0.1" oninput="docalc()"><br>
-            <button onclick="unify()">Apply to all</button>
+            <button onclick="unify()">Apply to all</button><br>
+            <button onclick="auxwnd()">Diagrams</button>
             <div id="log" hidden></div>
         </div>
         <div id="hsiz" class="hsep" onmousedown="hresize(event)"></div>
