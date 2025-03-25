@@ -526,6 +526,7 @@ and open the template in the editor.
             let undo_pos;
             function activateslice(idx) {
                 series.current = idx;
+                updateaux();
                 stripidx = idx;
                 marker = false;
                 active_image = images[idx];
@@ -735,6 +736,8 @@ and open the template in the editor.
                 if (!ready)
                     return;
                 store_undo(true);
+                ouv=active_image.ouv.slice();
+                imagenavi();
 
 //                switch (document.getElementById("mode").selectedIndex) {
 //                    case 0:
@@ -1610,7 +1613,7 @@ and open the template in the editor.
             </div>
             <hr>
             <!--<button onclick="store()">Store</button><button onclick="restore()">Restore</button><button onclick="ouv_clear()">Clear</button>-->
-            <button id="undo" onclick="undo()">Undo</button><button id="redo" onclick="redo()">Redo</button><!--<button onclick="ouv_clear()">Clear</button>-->
+            <button id="undo" onclick="undo()">Undo</button><button id="redo" onclick="redo()">Redo</button><button onclick="ouv_clear()">Clear</button>
             <hr>
             <select id="mode" oninput="angles()">
                 <option>Coronal</option>

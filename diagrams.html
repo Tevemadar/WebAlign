@@ -17,6 +17,7 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
             function msgHandler(event) {
                 document.getElementById("log").innerText = JSON.stringify(event.data, null, 4);
 
+                mode = event.data.mode;
                 data = event.data.sections.map(section => {
                     const {filename, width, height, snr, ouv, anchored} = section;
 
@@ -28,10 +29,12 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
                         corners.push(o.map((c, i) => c + u[i] * w[0] + v[i] * w[1]));
                     const midpoint = o.map((c, i) => c + u[i] / 2 + v[i] / 2);
 
-                    const coordinates = [snr, ...midpoint, ...rot123uvfrom(section.ouv, 0).map(r => deg(r)).slice(0, 3)];
+                    const coordinates = [snr, ...midpoint, ...rot123uvfrom(section.ouv, mode).map(r => deg(r)).slice(0, 3)];
 
                     return {filename, width, height, snr, ouv, anchored, corners, midpoint, coordinates};
                 });
+
+                current = data[event.data.idx];
 
                 for (let i = 0; i < data.length - 1; i++) {
                     const section = data[i];
@@ -163,7 +166,7 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
 //            const corners = [[0, 0], [0, 1], [1, 1], [1, 0]];
             function redraw() {
                 const typ = document.getElementById("view").selectedIndex;
-                document.getElementById("axis1").hidden=document.getElementById("axis2").hidden=typ<3;
+                document.getElementById("axis1").hidden = document.getElementById("axis2").hidden = typ < 3;
                 const cnv = document.getElementById("cnv");
                 const ctx = cnv.getContext("2d");
                 if (typ < 3) {
@@ -245,13 +248,19 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
                         prev = curr;
                     }
                 }
-                ctx.fillStyle = "red";
                 ctx.lineWidth = 1;
-                ctx.strokeStyle = "blue";
                 for (const section of data) {
+                    if (section === current) {
+                        ctx.beginPath();
+                        ctx.ellipse(tx(section.diagx), ty(section.diagy), 10, 10, 0, 0, Math.PI * 2);
+                        ctx.fillStyle = "orange";
+                        ctx.fill();
+                    }
                     ctx.beginPath();
                     ctx.ellipse(tx(section.diagx), ty(section.diagy), 5, 5, 0, 0, Math.PI * 2);
+                    ctx.fillStyle = section.anchored ? "green" : "red";
                     ctx.fill();
+                    ctx.strokeStyle = "blue";
                     ctx.stroke();
                 }
             }
