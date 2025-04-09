@@ -70,7 +70,7 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
                 const target_spacing = spacing / scale;
             }
 
-            const ml = 20, mr = 20, mt = 20, mb = 20, arw = 15, grid = 60;
+            const ml = 30, mr = 20, mt = 20, mb = 25, arw = 15, grid = 60;
             const diagram = {};
             function setupCanvas(minx, miny, maxx, maxy) {
                 const d = diagram;
@@ -90,6 +90,7 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
                 ctx.save();
 
                 ctx.strokeStyle = "black";
+                ctx.font = "12px sans-serif";
 
 //                const diag_height=(maxy-miny)*s;
 //                const vert_gridlines=diag_height/grid;
@@ -100,10 +101,11 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
                 const vert_factor = Math.pow(10, Math.floor(Math.log10(vert_spacing)));
                 const vert_nice_spacing = vert_factor * Math.round(vert_spacing / vert_factor);
                 //console.log(vert_nice_spacing);
+                ctx.textAlign = "right";
                 for (let y = vert_nice_spacing * Math.ceil(miny / vert_nice_spacing); y < maxy; y += vert_nice_spacing) {
                     moveTo(minx, y);
                     lineTo(maxx, y);
-                    ctx.strokeText(y, 0, ty(y));
+                    ctx.strokeText(y, ml - 5, ty(y));
                 }
 
                 const diag_width = (maxx - minx) * s;
@@ -111,10 +113,11 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
                 const horz_spacing = (maxx - minx) / horz_gridlines;
                 const horz_factor = Math.pow(10, Math.floor(Math.log10(horz_spacing)));
                 const horz_nice_spacing = horz_factor * Math.round(horz_spacing / horz_factor);
+                ctx.textAlign = "center";
                 for (let x = horz_nice_spacing * Math.ceil(minx / horz_nice_spacing); x < maxx; x += horz_nice_spacing) {
                     moveTo(x, miny);
                     lineTo(x, maxy);
-                    ctx.strokeText(x, tx(x), height);
+                    ctx.strokeText(x, tx(x), height - 5);
                 }
 
                 ctx.stroke();
@@ -249,6 +252,7 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
                     }
                 }
                 ctx.lineWidth = 1;
+                ctx.strokeStyle = "blue";
                 for (const section of data) {
                     if (section === current) {
                         ctx.beginPath();
@@ -260,7 +264,6 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
                     ctx.ellipse(tx(section.diagx), ty(section.diagy), 5, 5, 0, 0, Math.PI * 2);
                     ctx.fillStyle = section.anchored ? "green" : "red";
                     ctx.fill();
-                    ctx.strokeStyle = "blue";
                     ctx.stroke();
                 }
             }
