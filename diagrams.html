@@ -169,7 +169,7 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
 //            const corners = [[0, 0], [0, 1], [1, 1], [1, 0]];
             function redraw() {
                 const typ = document.getElementById("view").selectedIndex;
-                document.getElementById("axis1").hidden = document.getElementById("axis2").hidden = typ < 3;
+                document.getElementById("adv_group").hidden = document.getElementById("axis2").hidden = typ < 3;
                 const cnv = document.getElementById("cnv");
                 const ctx = cnv.getContext("2d");
                 if (typ < 3) {
@@ -323,6 +323,17 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
                 let rot3 = Math.acos(clamp(dot(u, baseu))) * Math.sign(dot(cross(u, baseu), n));
                 return [rot1, rot2, rot3, ul, vl];
             }
+            function set_adv(event){
+                if(event.target.checked){
+                    adv_span.hidden=true;
+                    axis1.hidden=false;
+                }else{
+                    adv_span.hidden=false;
+                    axis1.hidden=true;
+                    axis1.selectedIndex=0;
+                    redraw();
+                }
+            }
         </script>
     </head>
     <body>
@@ -332,20 +343,6 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
             <option>side view</option>
             <option>diagrams</option>
         </select><br>
-        <select id="axis1" onchange="redraw()">
-            <option># snr</option>
-            <option>x (L-R)</option>
-            <option>y (A-P)</option>
-            <option>z (I-S)</option>
-            <option>primary angle</option>
-            <option>secondary angle</option>
-            <option>planar angle</option>
-            <option>x spacing (L-R)</option>
-            <option>y spacing (A-P)</option>
-            <option>z spacing (I-S)</option>
-            <option>internal axis</option>
-            <option>internal spacing</option>
-        </select>
         <select id="axis2" onchange="redraw()">
             <option># snr</option>
             <option>x (L-R)</option>
@@ -359,8 +356,24 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
             <option>z spacing (I-S)</option>
             <option>internal axis</option>
             <option>internal spacing</option>
-        </select><br>
-
+        </select>
+        <span id="adv_group" style="border: solid 1px gray" hidden><input type="checkbox" onchange="set_adv(event)">
+            <span id="adv_span">Advanced</span>
+            <select id="axis1" onchange="redraw()" hidden>
+                <option># snr</option>
+                <option>x (L-R)</option>
+                <option>y (A-P)</option>
+                <option>z (I-S)</option>
+                <option>primary angle</option>
+                <option>secondary angle</option>
+                <option>planar angle</option>
+                <option>x spacing (L-R)</option>
+                <option>y spacing (A-P)</option>
+                <option>z spacing (I-S)</option>
+                <option>internal axis</option>
+                <option>internal spacing</option>
+            </select>
+        </span><br>
         <canvas id="cnv" onmousemove="mmove(event)" ondblclick="dclick(event)" style="border:1px solid green;background: lightblue;"></canvas><br>
         <pre id="log" style="display:none">TODO write content</pre>
         <div id="pop" style="position:absolute;background:white;padding: 10px"></div>
