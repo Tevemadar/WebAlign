@@ -140,7 +140,8 @@ and open the template in the editor.
                         `https://data-proxy.ebrains.eu/api/v1/buckets/${bucketfile}?redirect=false`,
                         {headers: {authorization: `Bearer ${token}`}}).then(response => response.json());
             }
-            const oldisv = "https://object.cscs.ch/v1/AUTH_08c08f9f119744cbbf77e216988da3eb/";
+//            const oldisv = "https://object.cscs.ch/v1/AUTH_08c08f9f119744cbbf77e216988da3eb/";
+            const oldisv = "https://data-proxy.ebrains.eu/api/v1/buckets/p08c08-";
 
             let atlas = {xdim: 1, ydim: 1, zdim: 1};
             let series;
