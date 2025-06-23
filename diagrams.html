@@ -70,7 +70,9 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
                 const target_spacing = spacing / scale;
             }
 
-            const ml = 30, mr = 20, mt = 20, mb = 25, arw = 15, grid = 60;
+            const /*ml = 30,*/ mr = 20, mt = 20, /*mb = 25,*/ arw = 15, grid = 60;
+            let ml = 30;
+            let mb = 25;
             const diagram = {};
             function setupCanvas(minx, miny, maxx, maxy) {
                 const d = diagram;
@@ -78,19 +80,25 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
                 d.miny = miny;
                 d.maxx = maxx;
                 d.maxy = maxy;
+                const cnv = d.cnv = document.getElementById("cnv");
+                const ctx = d.ctx = cnv.getContext("2d");
+                ctx.save();
+                ctx.font = "12px sans-serif";
+                console.log(miny,maxy);
+                ml=Math.max(ctx.measureText(miny).width,ctx.measureText(maxy).width)
+                +12/*ctx.measureText(axis2.value).height*/;
+                mb=12/*Math.max(ctx.measureText(minx).height,ctx.measureText(maxx).height)*/
+                +12/*ctx.measureText(axis1.value).height*/;
+        console.log(ml,mb);
+                
                 const w = window.innerWidth - 40 - 200 - ml - mr;
                 const h = window.innerHeight - 70 - mt - mb;
                 const s = d.scl = Math.min(w / (maxx - minx), h / (maxy - miny));
-                const cnv = d.cnv = document.getElementById("cnv");
-                const ctx = d.ctx = cnv.getContext("2d");
                 const width = cnv.width = (maxx - minx) * s + ml + mr;
                 const height = cnv.height = (maxy - miny) * s + mt + mb;
                 ctx.clearRect(0, 0, cnv.width, cnv.height);
 
-                ctx.save();
-
                 ctx.strokeStyle = "black";
-                ctx.font = "12px sans-serif";
 
 //                const diag_height=(maxy-miny)*s;
 //                const vert_gridlines=diag_height/grid;
