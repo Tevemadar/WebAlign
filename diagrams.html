@@ -8,12 +8,62 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
         <title>TODO supply a title</title>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+            html {
+                height: 100%;
+                overflow: hidden;
+            }
+            body {
+                display: flex;
+                flex-direction: column;
+                height: 100%;
+            }
+            #title {
+                /*margin: 0.5em;*/
+                background: red;
+            }
+            /*            #config {
+                            margin: auto;
+                            top: 0;
+                            bottom: 0;
+                            left: 0;
+                            right: 0;
+                        }*/
+            #container{
+                display: flex;
+                overflow: hidden;
+            }
+            #cnv-div {
+                flex: 1 1;
+                overflow: hidden;
+            }
+            #text-div {
+                display: flex;
+                flex-direction: column;
+                width: 400px;
+                /*flex: 0 0 400px;*/
+                overflow: hidden;
+            }
+            #legend {
+            }
+            #log {
+                overflow: auto;
+            }
+            #pop {
+                position: absolute;
+                background: white;
+                padding: 10px;
+                border: 1px solid black;
+                display: none;
+            }
+        </style>
         <script src="math.js"></script>
         <script>
             let data = false;
             let current = false;
             let mode = 0;
             addEventListener("message", msgHandler, false);
+            opener.postMessage("ready.");
             function msgHandler(event) {
                 document.getElementById("log").innerText = JSON.stringify(event.data, null, 4);
 
@@ -30,15 +80,29 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
                     const midpoint = o.map((c, i) => c + u[i] / 2 + v[i] / 2);
 
                     const coordinates = [snr, ...midpoint, ...rot123uvfrom(section.ouv, mode).map(r => deg(r)).slice(0, 3)];
+                    /*
+                     * 0: snr
+                     * 1: x
+                     * 2: y
+                     * 3: z
+                     * 4: r1
+                     * 5: r2
+                     * 6: r3
+                     */
 
                     return {filename, width, height, snr, ouv, anchored, corners, midpoint, coordinates};
                 });
 
                 current = data[event.data.idx];
 
-                for (let i = 0; i < data.length - 1; i++) {
+                for (let i = 0; i < data.length; i++) {
                     const section = data[i];
                     section.coordinates.push(...section.midpoint.map((c, idx) => i === 0 ? data[1].midpoint[idx] - c : c - data[i - 1].midpoint[idx]));
+                    /*
+                     * 7: dx
+                     * 8: dy
+                     * 9: dz
+                     */
                 }
 
                 const lraxes = [0, 1, 2].map(() => new LinReg);
@@ -47,6 +111,7 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
                         lraxes[i].add(section.snr, section.midpoint[i]);
                 const A = [0, 1, 2].map(i => lraxes[i].get(data[0].snr));
                 const B = [0, 1, 2].map(i => lraxes[i].get(data[data.length - 1].snr));
+                const length = Math.hypot(...[0, 1, 2].map(i => A[i] - B[i]));
                 const BmA = B.map((b, i) => b - A[i]);
                 for (const section of data) {
                     const {ouv} = section;
@@ -54,128 +119,183 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
                     const v = ouv.slice(6, 9);
                     const uxv = cross(u, v);
                     const OmA = A.map((a, i) => ouv[i] - a);
-                    section.coordinates.push(section.t = dot(OmA, uxv) * 100 / dot(BmA, uxv));
+                    section.coordinates.push(section.t = dot(OmA, uxv) * length / dot(BmA, uxv));
+                    /*
+                     * 10: internal 0-100 // todo
+                     */
                 }
-                for (let i = 0; i < data.length - 1; i++) {
+                for (let i = 0; i < data.length; i++) {
                     const section = data[i];
                     section.coordinates.push(i === 0 ? data[1].t - section.t : section.t - data[i - 1].t);
+                    /*
+                     * 11: internal 0-100 "spacing" // todo
+                     */
                 }
 
                 redraw();
             }
 
-            opener.postMessage("ready.");
+            const margins = {top: 20, bottom: 30, left: 50, right: 20};
+            const arrow = {length: 20, width: 10};
+            const grid = 150;
+            const labels = [];
+            function redraw() {
+                const cnv_div = document.getElementById("cnv-div");
+                const cnv = document.getElementById("cnv");
+                const width = cnv.width = cnv_div.clientWidth - 10;
+                const height = cnv.height = cnv_div.clientHeight - 15;
+//                const ctx=cnv.getContext("2d");
+//                ctx.moveTo(0,0);
+//                ctx.lineTo(cnv.width,cnv.height);
+//                ctx.stroke();
 
-            function steps(min, max, scale, spacing) {
-                const target_spacing = spacing / scale;
+                const g = document.getElementById("config").selectedIndex;
+                if (g > 5) {
+                    alert("!");
+                    return;
+                }
+                let format = [
+                    "<table><tr><td>#</td><td>$1</td></tr><tr><td>Pos.</td><td>$2 voxel</td></tr></table>",
+                    "<table><tr><td>#</td><td>$1</td></tr><tr><td>Step</td><td>$2 voxel</td></tr></table>",
+                    "<table><tr><td>#</td><td>$1</td></tr><tr><td>Pos.</td><td>$2 voxel</td></tr></table>",
+                    "<table><tr><td>#</td><td>$1</td></tr><tr><td>Step</td><td>$2 voxel</td></tr></table>",
+                    "<table><tr><td>#</td><td>$1</td></tr><tr><td>Rot1</td><td>$2 &deg;</td></tr></table>",
+                    "<table><tr><td>#</td><td>$1</td></tr><tr><td>Rot2</td><td>$2 &deg;</td></tr></table>"
+                ][g];
+                const axis1 = data.map(d => d.snr);
+                const axis2 = data.map(d => {
+                    switch (g) {
+                        case 0: // position cor/sag/hor
+                            return d.coordinates[[2, 1, 3][mode]];
+                        case 1: // spacing
+                            return d.coordinates[[8, 7, 9][mode]];
+                        case 2: // internal pos
+                            return d.coordinates[10];
+                        case 3: // internal spacing
+                            return d.coordinates[11];
+                        case 4: // primary angle
+                            return d.coordinates[4];
+                        case 5: // secondary angle
+                            return d.coordinates[5];
+                    }
+                });
+                const minx = Math.min(...axis1);
+                const maxx = Math.max(...axis1);
+                const miny = Math.min(...axis2);
+                const maxy = Math.max(...axis2);
+                const ctx = cnv.getContext("2d");
+                ctx.clearRect(0, 0, width, height);
+
+                const xAxis = axis(width - margins.left - margins.right - arrow.length - arrow.width, minx, maxx);
+                const yAxis = axis(height - margins.top - margins.bottom - arrow.length - arrow.width, miny, maxy);
+                ctx.font = "14px sans-serif";
+                ctx.textAlign = "right";
+                ctx.textBaseline = "middle";
+                ctx.strokeStyle = "black";
+                ctx.beginPath();
+                for (const tick of yAxis.ticks) {
+                    ctx.moveTo(margins.left, height - margins.bottom - tick[1]);
+                    ctx.lineTo(width - margins.right, height - margins.bottom - tick[1]);
+                    ctx.strokeText(tick[0], margins.left - 10, height - margins.bottom - tick[1]);
+                }
+                ctx.strokeStyle = "darkgray";
+                ctx.stroke();
+                ctx.strokeStyle = "black";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "top";
+                for (const tick of xAxis.ticks)
+                    ctx.strokeText(tick[0], margins.left + tick[1], height - margins.bottom + 10);
+
+                ctx.strokeStyle = "black";
+                drawArrows(ctx, width, height);
+
+                labels.length  = 0;
+                ctx.beginPath();
+                ctx.moveTo(margins.left + xAxis.trf(axis1[0]), height - margins.bottom - yAxis.trf(axis2[0]));
+                for (let i = 0; i < axis1.length; i++) {
+                    const x = axis1[i];
+                    const y = axis2[i];
+                    const tx = margins.left + xAxis.trf(x);
+                    const ty = height - margins.bottom - yAxis.trf(y);
+                    ctx.lineTo(tx, ty);
+                    labels.push({tx, ty, label: data[i].filename+"<br>"+format.replace("$1", x).replace("$2", y.toFixed(2))});
+                }
+                ctx.stroke();
             }
 
-            const /*ml = 30,*/ mr = 20, mt = 20, /*mb = 25,*/ arw = 15, grid = 60;
-            let ml = 30;
-            let mb = 25;
-            const diagram = {};
-            function setupCanvas(minx, miny, maxx, maxy) {
-                const d = diagram;
-                d.minx = minx;
-                d.miny = miny;
-                d.maxx = maxx;
-                d.maxy = maxy;
-                const cnv = d.cnv = document.getElementById("cnv");
-                const ctx = d.ctx = cnv.getContext("2d");
+            function axis(length, min, max) {
+                //debugger;
+                if (min === max)
+                    return {
+                        ticks: [[min, length / 2]],
+                        trf: () => length / 2
+                    };
+                const absmax = Math.max(Math.abs(min), Math.abs(max));
+                const absmaxlog = Math.max(Math.floor(Math.log10(absmax)), 0);
+                /*if (absmaxlog >= 0)*/ {
+                    const absmax10 = 10 ** absmaxlog;
+                    const step = length / grid < (max - min) / absmax10 ? absmax10 : absmax10 / 2;
+                    const mintick = Math.floor(min / step);
+                    const maxtick = Math.ceil(max / step);
+                    const trf = data => (data / step - mintick) * length / (maxtick - mintick);
+                    const ticks = [];
+                    for (let tick = mintick * step; tick <= maxtick * step; tick += step) {
+                        ticks.push([tick, trf(tick)]);
+                    }
+                    return {ticks, trf};
+                }
+            }
+
+            function drawArrows(ctx, width, height) {
                 ctx.save();
-                ctx.font = "12px sans-serif";
-                console.log(miny,maxy);
-                ml=Math.max(ctx.measureText(miny).width,ctx.measureText(maxy).width)
-                +12/*ctx.measureText(axis2.value).height*/;
-                mb=12/*Math.max(ctx.measureText(minx).height,ctx.measureText(maxx).height)*/
-                +12/*ctx.measureText(axis1.value).height*/;
-        console.log(ml,mb);
-                
-                const w = window.innerWidth - 40 - 200 - ml - mr;
-                const h = window.innerHeight - 70 - mt - mb;
-                const s = d.scl = Math.min(w / (maxx - minx), h / (maxy - miny));
-                const width = cnv.width = (maxx - minx) * s + ml + mr;
-                const height = cnv.height = (maxy - miny) * s + mt + mb;
-                ctx.clearRect(0, 0, cnv.width, cnv.height);
-
                 ctx.strokeStyle = "black";
-
-//                const diag_height=(maxy-miny)*s;
-//                const vert_gridlines=diag_height/grid;
-//                const vert_spacing=(maxy-miny)/vert_gridlines;
-                const vert_spacing = grid / s;
-                // 477.8169800203971 1.605217127208954 767 60 12.783333333333333 37.378120992469135
-                // console.log(maxy-miny,s,diag_height,grid,vert_gridlines,vert_spacing);
-                const vert_factor = Math.pow(10, Math.floor(Math.log10(vert_spacing)));
-                const vert_nice_spacing = vert_factor * Math.round(vert_spacing / vert_factor);
-                //console.log(vert_nice_spacing);
-                ctx.textAlign = "right";
-                for (let y = vert_nice_spacing * Math.ceil(miny / vert_nice_spacing); y < maxy; y += vert_nice_spacing) {
-                    moveTo(minx, y);
-                    lineTo(maxx, y);
-                    ctx.strokeText(y, ml - 5, ty(y));
-                }
-
-                const diag_width = (maxx - minx) * s;
-                const horz_gridlines = diag_width / grid;
-                const horz_spacing = (maxx - minx) / horz_gridlines;
-                const horz_factor = Math.pow(10, Math.floor(Math.log10(horz_spacing)));
-                const horz_nice_spacing = horz_factor * Math.round(horz_spacing / horz_factor);
-                ctx.textAlign = "center";
-                for (let x = horz_nice_spacing * Math.ceil(minx / horz_nice_spacing); x < maxx; x += horz_nice_spacing) {
-                    moveTo(x, miny);
-                    lineTo(x, maxy);
-                    ctx.strokeText(x, tx(x), height - 5);
-                }
-
-                ctx.stroke();
-
-
-
-                ctx.strokeStyle = "black";
-                ctx.lineWidth = 2;
                 ctx.fillStyle = "black";
-                ctx.fill();
+                ctx.lineWidth = 2;
                 ctx.beginPath();
-                ctx.moveTo(ml, mt);
-                ctx.lineTo(ml - arw, mt + arw);
-                ctx.lineTo(ml + arw, mt + arw);
+                ctx.moveTo(margins.left, margins.top);
+                ctx.lineTo(margins.left - arrow.width / 2, margins.top + arrow.length);
+                ctx.lineTo(margins.left + arrow.width / 2, margins.top + arrow.length);
                 ctx.closePath();
                 ctx.fill();
                 ctx.stroke();
 
-                ctx.lineTo(ml, mt);
-                ctx.lineTo(ml, height - mb);
-                ctx.lineTo(width - mr, height - mb);
+                ctx.lineTo(margins.left, margins.top);
+                ctx.lineTo(margins.left, height - margins.bottom);
+                ctx.lineTo(width - margins.right, height - margins.bottom);
                 ctx.stroke();
 
                 ctx.beginPath();
-                ctx.moveTo(width - mr, height - mb);
-                ctx.lineTo(width - mr - arw, height - mb - arw);
-                ctx.lineTo(width - mr - arw, height - mb + arw);
+                ctx.moveTo(width - margins.right, height - margins.bottom);
+                ctx.lineTo(width - margins.right - arrow.length, height - margins.bottom - arrow.width / 2);
+                ctx.lineTo(width - margins.right - arrow.length, height - margins.bottom + arrow.width / 2);
                 ctx.closePath();
                 ctx.fill();
                 ctx.stroke();
-
                 ctx.restore();
             }
-            function tx(x) {
-                const {minx, scl} = diagram;
-                return ml + (x - minx) * scl;
-            }
-            function ty(y) {
-                const {maxy, scl} = diagram;
-                return mt + (maxy - y) * scl;
-            }
-            function moveTo(x, y) {
-                diagram.ctx.moveTo(tx(x), ty(y));
-            }
-            function lineTo(x, y) {
-                diagram.ctx.lineTo(tx(x), ty(y));
-            }
+
+
+//            function steps(min, max, scale, spacing) {
+//                const target_spacing = spacing / scale;
+//            }
+//
+//            function tx(x) {
+//                const {minx, scl} = diagram;
+//                return ml + (x - minx) * scl;
+//            }
+//            function ty(y) {
+//                const {maxy, scl} = diagram;
+//                return mt + (maxy - y) * scl;
+//            }
+//            function moveTo(x, y) {
+//                diagram.ctx.moveTo(tx(x), ty(y));
+//            }
+//            function lineTo(x, y) {
+//                diagram.ctx.lineTo(tx(x), ty(y));
+//            }
 
 //            const corners = [[0, 0], [0, 1], [1, 1], [1, 0]];
-            function redraw() {
+            function redraw_r() {
                 const typ = document.getElementById("view").selectedIndex;
                 document.getElementById("adv_group").hidden = document.getElementById("axis2").hidden = typ < 3;
                 const cnv = document.getElementById("cnv");
@@ -196,14 +316,16 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
                     setupCanvas(...min, ...max);
                     ctx.strokeStyle = "black";
                     for (const section of data) {
-                        ctx.beginPath();
+                        if (section !== current) {
+                            ctx.beginPath();
 //                        ctx.moveTo(section.corners[0][pair[0]] - min[0] + 20, section.corners[0][pair[1]] - min[1] + 20);
-                        moveTo(section.corners[0][pair[0]], section.corners[0][pair[1]]);
-                        for (const corner of section.corners)
-                            lineTo(corner[pair[0]], corner[pair[1]]);
+                            moveTo(section.corners[0][pair[0]], section.corners[0][pair[1]]);
+                            for (const corner of section.corners)
+                                lineTo(corner[pair[0]], corner[pair[1]]);
 //                            ctx.lineTo(corner[pair[0]] - min[0] + 20, corner[pair[1]] - min[1] + 20);
-                        ctx.closePath();
-                        ctx.stroke();
+                            ctx.closePath();
+                            ctx.stroke();
+                        }
                         section.diagx = section.midpoint[pair[0]];
                         -min[0] + 20;
                         section.diagy = section.midpoint[pair[1]];
@@ -274,27 +396,50 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
                     ctx.fill();
                     ctx.stroke();
                 }
+                if (typ < 3) {
+                    debugger;
+                    const pair = [[1, 0], [0, 2], [1, 2]][typ];
+                    ctx.strokeStyle = "orange";
+                    ctx.lineWidth = 2;
+//                    for (const section of data) {
+                    ctx.beginPath();
+//                        ctx.moveTo(section.corners[0][pair[0]] - min[0] + 20, section.corners[0][pair[1]] - min[1] + 20);
+                    moveTo(current.corners[0][pair[0]], current.corners[0][pair[1]]);
+                    for (const corner of current.corners)
+                        lineTo(corner[pair[0]], corner[pair[1]]);
+//                            ctx.lineTo(corner[pair[0]] - min[0] + 20, corner[pair[1]] - min[1] + 20);
+                    ctx.closePath();
+                    ctx.stroke();
+//                        section.diagx = section.midpoint[pair[0]];
+//                        -min[0] + 20;
+//                        section.diagy = section.midpoint[pair[1]];
+//                        -min[1] + 20;
+//                    }
+                }
             }
 
+            function mout() {
+                document.getElementById("pop").style.display = "none";
+            }
             function mmove(event) {
                 let item = false;
-                for (const section of data)
-                    if (Math.hypot(event.offsetX - tx(section.diagx), event.offsetY - ty(section.diagy)) <= 5)
-                        item = section;
+                for (const label of labels)
+                    if (Math.hypot(event.offsetX - label.tx, event.offsetY - label.ty) <= 5)
+                        item = label;
                 const pop = document.getElementById("pop");
                 pop.style.display = item ? "block" : "none";
                 if (item) {
                     pop.style.left = event.clientX + 15 + "px";
                     pop.style.top = event.clientY - 15 + "px";
-                    pop.innerText = item.filename + "\n" + item.diagx + " " + item.diagy;
+                    pop.innerHTML = item.label;
                 } else {
                 }
             }
             function dclick(event) {
                 let idx = -1;
-                for (let i = 0; i < data.length; i++) {
-                    const section = data[i];
-                    if (Math.hypot(event.offsetX - tx(section.diagx), event.offsetY - ty(section.diagy)) <= 5)
+                for (let i = 0; i < labels.length; i++) {
+                    const label = labels[i];
+                    if (Math.hypot(event.offsetX - label.tx, event.offsetY - label.ty) <= 5)
                         idx = i;
                 }
                 if (idx >= 0) {
@@ -331,59 +476,42 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
                 let rot3 = Math.acos(clamp(dot(u, baseu))) * Math.sign(dot(cross(u, baseu), n));
                 return [rot1, rot2, rot3, ul, vl];
             }
-            function set_adv(event){
-                if(event.target.checked){
-                    adv_span.hidden=true;
-                    axis1.hidden=false;
-                }else{
-                    adv_span.hidden=false;
-                    axis1.hidden=true;
-                    axis1.selectedIndex=0;
+            function set_adv(event) {
+                if (event.target.checked) {
+                    adv_span.hidden = true;
+                    axis1.hidden = false;
+                } else {
+                    adv_span.hidden = false;
+                    axis1.hidden = true;
+                    axis1.selectedIndex = 0;
                     redraw();
                 }
             }
         </script>
     </head>
-    <body>
-        <select id="view" onchange="redraw()">
-            <option>top view</option>
-            <option>front view</option>
-            <option>side view</option>
-            <option>diagrams</option>
-        </select><br>
-        <select id="axis2" onchange="redraw()">
-            <option># snr</option>
-            <option>x (L-R)</option>
-            <option>y (A-P)</option>
-            <option>z (I-S)</option>
-            <option>primary angle</option>
-            <option>secondary angle</option>
-            <option>planar angle</option>
-            <option>x spacing (L-R)</option>
-            <option>y spacing (A-P)</option>
-            <option>z spacing (I-S)</option>
-            <option>internal axis</option>
-            <option>internal spacing</option>
-        </select>
-        <span id="adv_group" style="border: solid 1px gray" hidden><input type="checkbox" onchange="set_adv(event)">
-            <span id="adv_span">Advanced</span>
-            <select id="axis1" onchange="redraw()" hidden>
-                <option># snr</option>
-                <option>x (L-R)</option>
-                <option>y (A-P)</option>
-                <option>z (I-S)</option>
-                <option>primary angle</option>
-                <option>secondary angle</option>
-                <option>planar angle</option>
-                <option>x spacing (L-R)</option>
-                <option>y spacing (A-P)</option>
-                <option>z spacing (I-S)</option>
-                <option>internal axis</option>
-                <option>internal spacing</option>
+    <body onresize="redraw()">
+        <div id="title">
+            <select id="config" onchange="redraw()">
+                <option>Position</option>
+                <option>Spacing</option>
+                <option>Position (series axis)</option>
+                <option>Spacing (series axis)</option>
+                <option>Primary angle</option>
+                <option>Secondary angle</option>
+<!--                <option>Top view</option>
+                <option>Side view</option>
+                <option>Front view</option>-->
             </select>
-        </span><br>
-        <canvas id="cnv" onmousemove="mmove(event)" ondblclick="dclick(event)" style="border:1px solid green;background: lightblue;"></canvas><br>
-        <pre id="log" style="display:none">TODO write content</pre>
-        <div id="pop" style="position:absolute;background:white;padding: 10px"></div>
+        </div>
+        <div id="container">
+            <div id="cnv-div">
+                <canvas id="cnv" onmousemove="mmove(event)" ondblclick="dclick(event)" onmouseout="mout()"></canvas>
+            </div>
+            <div id="text-div">
+                <div id="legend">Trallala</div>
+                <pre id="log"></pre>
+            </div>
+        </div>
+        <div id="pop"></div>
     </body>
 </html>
