@@ -14,6 +14,9 @@ and open the template in the editor.
                 height: 100%;
                 margin: 0;
                 overflow: hidden;
+                font-family: 'Inter','Source Sans Pro',sans-serif;
+                font-size: 16px;
+                line-height: 20px;
             }
             body{
                 background: purple;
@@ -48,7 +51,7 @@ and open the template in the editor.
             }
             #filmstrip{
                 background: white;
-                height: 128px;
+                height: calc(128px + 15px);
                 overflow: hidden;
             }
             canvas{
@@ -140,8 +143,7 @@ and open the template in the editor.
                         `https://data-proxy.ebrains.eu/api/v1/buckets/${bucketfile}?redirect=false`,
                         {headers: {authorization: `Bearer ${token}`}}).then(response => response.json());
             }
-//            const oldisv = "https://object.cscs.ch/v1/AUTH_08c08f9f119744cbbf77e216988da3eb/";
-            const oldisv = "https://data-proxy.ebrains.eu/api/v1/buckets/p08c08-";
+            const oldisv = "https://object.cscs.ch/v1/AUTH_08c08f9f119744cbbf77e216988da3eb/";
 
             let atlas = {xdim: 1, ydim: 1, zdim: 1};
             let series;
@@ -248,7 +250,7 @@ and open the template in the editor.
                 cover();
             }
             let ctrlw = 300;
-            let fstrip = 128;
+            let fstrip = 128+15;
             let width;
             let mainh;
             let mainw;
@@ -264,12 +266,15 @@ and open the template in the editor.
                 let maincnv = document.getElementById("maincnv");
                 let navicnv = document.getElementById("navicnv");
                 let filmcnv = document.getElementById("filmcnv");
+                let scrlcnv = document.getElementById("scrlcnv");
 
-                if (fstrip > 128)
-                    fstrip = 128;
+                if (fstrip > 128+15)
+                    fstrip = 128+15;
                 if (fstrip < 0)
                     fstrip = 0;
-                width = filmcnv.width = window.innerWidth;
+                width = filmcnv.width = scrlcnv.width = window.innerWidth;
+                filmcnv.height = 128;
+                scrlcnv.height = 15;
 
                 mainh = maincnv.height = navicnv.height = window.innerHeight - fstrip - vsiz.offsetHeight;
                 ctrl.style.height =
@@ -289,8 +294,8 @@ and open the template in the editor.
                 main.style.width = mainw + "px";
                 vsiz.style.width = fstr.style.width = width + "px";
                 fstr.style.top = (window.innerHeight - fstrip) + "px";
-                filmcnv.height = fstrip;
-                fstr.style.height = fstrip + "px";
+//                filmcnv.height = fstrip;
+//                fstr.style.height = (fstrip+10) + "px";
                 drawX("maincnv");
                 drawX("navicnv");
                 drawX("filmcnv");
@@ -323,6 +328,7 @@ and open the template in the editor.
 
             let strippos;
             let stripidx;
+            let scroller = false;
             async function drawstrip() {
                 if (!ready)
                     return;
@@ -331,6 +337,18 @@ and open the template in the editor.
                     strippos = fsw - width;
                 if (strippos < 0)
                     strippos = 0;
+                
+                let scrctx = document.getElementById("scrlcnv").getContext("2d");
+                scrctx.fillStyle="lightgrey";
+                scrctx.fillRect(0,0,width,15);
+                scroller=false;
+                if(fsw>width){
+                    scroller={pos:strippos*width/fsw,size:width*width/fsw};
+                    scrctx.fillStyle="darkgrey";
+                    scrctx.fillRect(scroller.pos,0,scroller.size,15);
+                }
+                
+                
                 let current = images[stripidx];
 
                 let cnv = document.getElementById("filmcnv");
@@ -422,6 +440,29 @@ and open the template in the editor.
                         }
                     }
             }
+            
+            let scrollpick = false;
+            function scrolldown(event) {
+                scrollpick = false;
+                if(!scroller)
+                    return;
+                const x=event.offsetX;
+                if(x<scroller.pos || x>scroller.pos+scroller.size){
+                    strippos = (x-scroller.size/2)*fsw/width;
+                    drawstrip();
+                }else{
+                    scrollpick = {pos:strippos,x};
+                }
+            }
+            function scrollup() {
+                scrollpick = false;
+            }
+            function scrollmove(event) {
+                if(scroller && scrollpick) {
+                    strippos = scrollpick.pos+(event.offsetX-scrollpick.x)*fsw/width;
+                    drawstrip();
+                }
+            }
             function stripscroll(event) {
                 event.preventDefault();
                 strippos -= event.deltaY;
@@ -438,7 +479,7 @@ and open the template in the editor.
                 if (!strippick)
                     return;
                 let t = Date.now();
-                if (t === strippick.t)
+                if (t === strippick.t) //??
                     return;
                 let v = (strippick.mx - event.offsetX) / (t - strippick.t);
                 strippick.mx = event.offsetX;
@@ -701,6 +742,18 @@ and open the template in the editor.
 //                    delete series.sections[idx].markers;
 //                    idx++;
 //                }
+// Clearing nonlinear "done" markerings from altered sections
+                delete series.sections[stripidx].wwdone;
+                let idx = stripidx - 1;
+                while (idx >= 0 && !images[idx].anchored) {
+                    delete series.sections[idx].wwdone;
+                    idx--;
+                }
+                idx = stripidx + 1;
+                while (idx < images.length && !images[idx].anchored) {
+                    delete series.sections[idx].wwdone;
+                    idx++;
+                }
 
                 propagate();
                 drawstrip();
@@ -1410,6 +1463,8 @@ and open the template in the editor.
                     return;
                 series.mode = document.getElementById("mode").selectedIndex;
                 let rots = rot123uvfrom(ouv, series.mode);
+                if(rots.some(x=>isNaN(x)))
+                    return;
                 document.getElementById("rot1").value = deg(rots[0]).toFixed(2);
                 document.getElementById("rot2").value = deg(rots[1]).toFixed(2);
                 document.getElementById("rot3").value = deg(rots[2]).toFixed(2);
@@ -1446,6 +1501,8 @@ and open the template in the editor.
                 let rot1 = rad(document.getElementById("rot1").valueAsNumber);
                 let rot2 = rad(document.getElementById("rot2").valueAsNumber);
                 let rot3 = rad(document.getElementById("rot3").valueAsNumber);
+                if([rot1,rot2,rot3].some(x=>isNaN(x)))
+                    return;
                 fromrot123uv(ouv, [rot1, rot2, rot3, len3(ouv, 3), len3(ouv, 6)], document.getElementById("mode").selectedIndex);
                 imagenavi();
             }
@@ -1597,7 +1654,15 @@ and open the template in the editor.
                 &#x2194;&#x2195;<input id="panstep" type="number" min="0" max="20" step="0.1" value="1">
                 <!--1f504-->&#x21BA;<input id="rotstep" type="number" min="0" max="20" step="0.1" value="1">
             </div>
-            <div class="ctrlrow">
+            <div style="position: static; display: grid; grid-template-columns: auto auto auto;">
+                    Overlay
+                    <input id="mainalpha" type="range" min="0" max="100" step="1" value="100" oninput="drawimage()">
+                    <input id="mainoutline" type="color" value="#0000FF" oninput="drawimage()">
+                    Filmstrip
+                    <input id="stripalpha" type="range" min="0" max="100" step="1" value="100" oninput="drawstrip()">
+                    <input id="stripoutline" type="color" value="#0000FF" oninput="drawstrip()">
+            </div>
+<!--            <div class="ctrlrow">
                 Overlay:
                 <input id="mainalpha" type="range" min="0" max="100" step="1" value="100" oninput="drawimage()">
                 <input id="mainoutline" type="color" value="#0000FF" oninput="drawimage()">
@@ -1606,13 +1671,13 @@ and open the template in the editor.
                 Filmstrip:
                 <input id="stripalpha" type="range" min="0" max="100" step="1" value="100" oninput="drawstrip()">
                 <input id="stripoutline" type="color" value="#0000FF" oninput="drawstrip()">
-            </div>
+            </div>-->
             <hr>
-            <div class="ctrlrow" id="gray" disabled="true">
+<!--            <div class="ctrlrow" id="gray" disabled="true">
                 Brighten:
                 <input id="contrast" type="range" min="0" max="255" step="1" value="255" oninput="imagenavi();drawstrip();">
             </div>
-            <hr>
+            <hr>-->
             <!--<button onclick="store()">Store</button><button onclick="restore()">Restore</button><button onclick="ouv_clear()">Clear</button>-->
             <button id="undo" onclick="undo()">Undo</button><button id="redo" onclick="redo()">Redo</button><button onclick="ouv_clear()">Clear</button>
             <hr>
@@ -1621,9 +1686,9 @@ and open the template in the editor.
                 <option>Sagittal</option>
                 <option>Horizontal</option>
             </select> angles:<br>
-            <input type="number" id="rot1" min="-90" max="90" step="0.1" oninput="docalc()">
-            <input type="number" id="rot2" min="-180" max="180" step="0.1" oninput="docalc()">
-            <input type="number" id="rot3" min="-180" max="180" step="0.1" oninput="docalc()"><br>
+            <input type="number" id="rot1" min="-90" max="90" step="0.1" onchange="docalc()">
+            <input type="number" id="rot2" min="-180" max="180" step="0.1" onchange="docalc()">
+            <input type="number" id="rot3" min="-180" max="180" step="0.1" onchange="docalc()"><br>
             <button onclick="unify()">Apply to all</button><br>
             <button onclick="auxwnd()">Diagrams</button>
             <div id="log" hidden></div>
@@ -1652,6 +1717,7 @@ and open the template in the editor.
         <div id="vsiz" onmousedown="vresize(event)"></div>
         <div id="filmstrip">
             <!--<canvas id="filmcnv" onclick="strippick(event)" onwheel="stripscroll(event)"></canvas>-->
+            <canvas id="scrlcnv" onmousedown="scrolldown(event)" onmousemove="scrollmove(event)" onmouseup="scrollup(event)"></canvas>
             <canvas id="filmcnv" onmousedown="stripdown(event)" onmousemove="stripmove(event)" onmouseup="stripup(event)" onwheel="stripscroll(event)"></canvas>
         </div>
         <div id="cover">        </div>
