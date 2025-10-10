@@ -814,6 +814,11 @@ and open the template in the editor.
 ////                drawimage();
 ////                drawnavi();
             }
+            function ouv_pin() {
+                if (!ready)
+                    return;
+                store_undo(false);
+            }
 
             let mainimg = false;
             let marker = false;
@@ -1679,7 +1684,7 @@ and open the template in the editor.
             </div>
             <hr>-->
             <!--<button onclick="store()">Store</button><button onclick="restore()">Restore</button><button onclick="ouv_clear()">Clear</button>-->
-            <button id="undo" onclick="undo()">Undo</button><button id="redo" onclick="redo()">Redo</button><button onclick="ouv_clear()">Clear</button>
+            <button id="undo" onclick="undo()">Undo</button><button id="redo" onclick="redo()">Redo</button><button onclick="ouv_clear()">Clear</button><button onclick="ouv_pin()">Approve</button>
             <hr>
             <select id="mode" oninput="angles()">
                 <option>Coronal</option>
