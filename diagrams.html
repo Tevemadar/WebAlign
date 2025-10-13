@@ -20,15 +20,17 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
             }
             #title {
                 /*margin: 0.5em;*/
-                background: red;
+                /*background: red;*/
             }
-            /*            #config {
-                            margin: auto;
-                            top: 0;
-                            bottom: 0;
-                            left: 0;
-                            right: 0;
-                        }*/
+            #config {
+                margin-top: 1em;
+                margin-bottom: 1em;
+/*                margin: auto;
+                top: 0;
+                bottom: 0;
+                left: 0;
+                right: 0;*/
+            }
             #container{
                 display: flex;
                 overflow: hidden;
@@ -45,6 +47,8 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
                 overflow: hidden;
             }
             #legend {
+                font-family: 'Inter','Source Sans Pro',sans-serif;
+                font-size: 16px;
             }
             #log {
                 overflow: auto;
@@ -67,12 +71,15 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
             opener.postMessage("ready.");
             function msgHandler(event) {
                 const log=document.getElementById("log");
-                const json=JSON.stringify(event.data, null, 4);
+//                const json=JSON.stringify(event.data, null, 4);
+//                const json=JSON.stringify(event.data.sections, null, 4);
+                const json=event.data.sections.map(section=>JSON.stringify(section,null,4)).join(",\n");
+
                 log.innerText = json;
-                const range=document.createRange();
-                range.setStart(log,4);
-                range.setEnd(log,5);
-                getSelection().addRange(range);
+//                const range=document.createRange();
+//                range.setStart(log,4);
+//                range.setEnd(log,5);
+//                getSelection().addRange(range);
 
                 mode = event.data.mode;
                 data = event.data.sections.map(section => {
@@ -616,18 +623,18 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
             </div>
             <div id="text-div">
                 <div id="legend">
-                    Legend<br>
+                    <p>Info</p>
                     <table>
                         <tr><td><canvas id="cnv_cur"></canvas></td><td>Current section</td></tr>
                         <tr><td><canvas id="cnv_anc"></canvas></td><td>Section anchored</td></tr>
                         <tr><td><canvas id="cnv_nanc"></canvas></td><td>Section not anchored</td></tr>
                         <tr><td><canvas id="cnv_trend"></canvas></td><td>Trend</td></tr>
-                        <tr><td><canvas id="cnv_inc"></canvas></td><td>Increase</td></tr>
-                        <tr><td><canvas id="cnv_dec"></canvas></td><td>Decrease</td></tr>
+                        <tr><td><canvas id="cnv_inc"></canvas></td><td>Value increasing</td></tr>
+                        <tr><td><canvas id="cnv_dec"></canvas></td><td>Value decreasing</td></tr>
                         <tr><td><canvas id="cnv_cons"></canvas></td><td>No change</td></tr>
-                    </table><br>
-                    Hover the mouse cursor over a section marker to see name, section number, and value.<br>
-                    Double-click to activate the section in the WebAlign window.
+                    </table>
+                    <p>Hover the mouse cursor over a section marker to see name, section number, and value.</p>
+                    <p>Double-click to activate the section in the WebAlign window.</p>
                 </div>
                 <pre id="log"></pre>
             </div>
