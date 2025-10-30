@@ -175,9 +175,11 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
                 redraw();
             }
 
-            const margins = {top: 20, bottom: 30, left: 50, right: 20};
+//            const margins = {top: 20, bottom: 30, left: 50, right: 20};
+            const margins = {top: 20, bottom: 50, left: 60, right: 20};
             const arrow = {length: 20, width: 10};
             const grid = 150;
+            const epsilon = 10 ** -4;
             const labels = [];
             function redraw() {
                 const cnv_div = document.getElementById("cnv-div");
@@ -189,36 +191,16 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
 //                ctx.lineTo(cnv.width,cnv.height);
 //                ctx.stroke();
 
-                const g = document.getElementById("config").selectedIndex;
-                if (g > 5) {
+                const diagram = document.getElementById("config").selectedOptions[0].dataset;
+                if (diagram.typ==="2D") {
                     overview(cnv);
                     return;
                 }
-                let format = [
-                    "<table><tr><td style='text-align:right'>#</td><td>$1</td></tr><tr><td>Pos.</td><td>$2 voxel</td></tr></table>",
-                    "<table><tr><td style='text-align:right'>#</td><td>$1</td></tr><tr><td>Step</td><td>$2 voxel</td></tr></table>",
-                    "<table><tr><td style='text-align:right'>#</td><td>$1</td></tr><tr><td>Pos.</td><td>$2 voxel</td></tr></table>",
-                    "<table><tr><td style='text-align:right'>#</td><td>$1</td></tr><tr><td>Step</td><td>$2 voxel</td></tr></table>",
-                    "<table><tr><td style='text-align:right'>#</td><td>$1</td></tr><tr><td>Rot1</td><td>$2&deg;</td></tr></table>",
-                    "<table><tr><td style='text-align:right'>#</td><td>$1</td></tr><tr><td>Rot2</td><td>$2&deg;</td></tr></table>"
-                ][g];
+                const format = "<table><tr><td style='text-align:right'>#</td><td>$1</td></tr><tr><td>"+diagram.l2+"</td><td>$2"+diagram.u2+"</td></tr></table>";
                 const axis1 = data.map(d => d.snr);
-                const axis2 = data.map(d => {
-                    switch (g) {
-                        case 0: // position cor/sag/hor
-                            return d.coordinates[[2, 1, 3][mode]];
-                        case 1: // spacing
-                            return d.coordinates[[8, 7, 9][mode]];
-                        case 2: // internal pos
-                            return d.coordinates[10];
-                        case 3: // internal spacing
-                            return d.coordinates[11];
-                        case 4: // primary angle
-                            return d.coordinates[4];
-                        case 5: // secondary angle
-                            return d.coordinates[5];
-                    }
-                });
+                const c2 = JSON.parse(diagram.c2);
+                const i2 = Array.isArray(c2)?c2[mode]:c2;
+                const axis2 = data.map(d => d.coordinates[i2]);
                 const minx = Math.min(...axis1);
                 const maxx = Math.max(...axis1);
                 const miny = Math.min(...axis2);
@@ -228,15 +210,26 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
 
                 const xAxis = axis(width - margins.left - margins.right - arrow.length - arrow.width, minx, maxx);
                 const yAxis = axis(height - margins.top - margins.bottom - arrow.length - arrow.width, miny, maxy);
-                ctx.font = "14px sans-serif";
+                ctx.font = "15px sans-serif";
+                ctx.strokeStyle = "black";
+                
+                ctx.textAlign = "center";
+                ctx.textBaseline = "bottom";
+                ctx.fillText("Sequence number", (margins.left+width-margins.right)/2,height);
+                
+                ctx.save();
+                ctx.textBaseline = "top";
+                ctx.setTransform(0,-1,1,0,0,(margins.top+height-margins.bottom)/2);
+                ctx.fillText(diagram.a2,0,0);
+                ctx.restore();
+                
                 ctx.textAlign = "right";
                 ctx.textBaseline = "middle";
-                ctx.strokeStyle = "black";
                 ctx.beginPath();
                 for (const tick of yAxis.ticks) {
                     ctx.moveTo(margins.left, height - margins.bottom - tick[1]);
                     ctx.lineTo(width - margins.right, height - margins.bottom - tick[1]);
-                    ctx.strokeText(tick[0], margins.left - 10, height - margins.bottom - tick[1]);
+                    ctx.fillText(tick[0], margins.left - 10, height - margins.bottom - tick[1]);
                 }
                 ctx.strokeStyle = "darkgray";
                 ctx.stroke();
@@ -244,25 +237,12 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
                 ctx.textAlign = "center";
                 ctx.textBaseline = "top";
                 for (const tick of xAxis.ticks)
-                    ctx.strokeText(tick[0], margins.left + tick[1], height - margins.bottom + 10);
+                    ctx.fillText(tick[0], margins.left + tick[1], height - margins.bottom + 10);
 
                 ctx.strokeStyle = "black";
                 drawArrows(ctx, width, height);
-
-                const reg=[
-//                    case 0: // position cor/sag/hor
-                        regs[[2, 1, 3][mode]],
-//                    case 1: // spacing
-                        regs[[8, 7, 9][mode]],
-//                    case 2: // internal pos
-                        regs[10],
-//                    case 3: // internal spacing
-                        regs[11],
-//                    case 4: // primary angle
-                        regs[4],
-//                    case 5: // secondary angle
-                        regs[5]
-                ][g];
+                
+                const reg = regs[i2];
                 
                 ctx.strokeStyle="orange";
                 ctx.lineWidth=2;
@@ -271,24 +251,8 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
                 ctx.lineTo(margins.left + xAxis.trf(reg[2]), height - margins.bottom - yAxis.trf(reg[3]));
                 ctx.stroke();
 
-//                labels.length  = 0;
-//                ctx.strokeStyle="green";
-//                ctx.beginPath();
-//                ctx.moveTo(margins.left + xAxis.trf(axis1[0]), height - margins.bottom - yAxis.trf(axis2[0]));
-//                for (let i = 0; i < axis1.length; i++) {
-//                    const x = axis1[i];
-//                    const y = axis2[i];
-//                    const tx = margins.left + xAxis.trf(x);
-//                    const ty = height - margins.bottom - yAxis.trf(y);
-//                    ctx.lineTo(tx, ty);
-//                    labels.push({tx, ty, label: data[i].filename+"<br>"+format.replace("$1", x).replace("$2", y.toFixed(2))});
-//                }
-//                ctx.stroke();
 
                 labels.length  = 0;
-//                ctx.strokeStyle="green";
-//                ctx.beginPath();
-//                ctx.moveTo(margins.left + xAxis.trf(axis1[0]), height - margins.bottom - yAxis.trf(axis2[0]));
                 for (let i = 0; i < axis1.length; i++) {
                     const x = axis1[i];
                     const y = axis2[i];
@@ -299,20 +263,18 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
                         const p = labels[i-1];
                         //const px = labels[i-1].x;
                         //const py = labels[i-1].y;
-                        ctx.strokeStyle = ["blue", "black", "red"][Math.sign(y - axis2[i-1])+1];
+                        console.log(y - axis2[i - 1]);
+                        ctx.strokeStyle = Math.abs(y - axis2[i - 1]) < epsilon ? "black" : ["blue", "black", "red"][Math.sign(y - axis2[i - 1]) + 1];
                         ctx.beginPath();
                         ctx.moveTo(p.tx, p.ty);
                         ctx.lineTo(tx,ty);
                         ctx.stroke();
                     }
                 }
-//                ctx.stroke();
                 
                 ctx.strokeStyle="green";
                 ctx.lineWidth=1;
                 for(let i=0;i<labels.length;i++){
-//                    ctx.fillStyle=data[i].anchored?"blue":"red";
-//                    ctx.strokeStyle=data[i]===current?"orange":"green";
                     ctx.fillStyle=data[i]===current?"orange":data[i].anchored?"green":"white";
                     ctx.beginPath();
                     ctx.ellipse(labels[i].tx,labels[i].ty,5,5,0,0,Math.PI*2);
@@ -323,11 +285,19 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
 
             function axis(length, min, max) {
                 //debugger;
-                if (min === max)
+                if (min === max) {
+                    let label = min.toFixed(3);
+                    if(!label.includes("e")){
+                        while(label.endsWith("0"))
+                            label=label.substring(0,label.length-1);
+                        if(label.endsWith("."))
+                            label=label.substring(0,label.length-1);
+                    }
                     return {
-                        ticks: [[min, length / 2]],
+                        ticks: [[label, length / 2]],
                         trf: () => length / 2
                     };
+                }
                 const absmax = Math.max(Math.abs(min), Math.abs(max));
                 const absmaxlog = Math.max(Math.floor(Math.log10(absmax)), 0);
                 /*if (absmaxlog >= 0)*/ {
@@ -733,17 +703,6 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
                 let rot3 = Math.acos(clamp(dot(u, baseu))) * Math.sign(dot(cross(u, baseu), n));
                 return [rot1, rot2, rot3, ul, vl];
             }
-            function set_adv(event) {
-                if (event.target.checked) {
-                    adv_span.hidden = true;
-                    axis1.hidden = false;
-                } else {
-                    adv_span.hidden = false;
-                    axis1.hidden = true;
-                    axis1.selectedIndex = 0;
-                    redraw();
-                }
-            }
             function legdot(id, color) {
                 const cnv=document.getElementById(id);
                 cnv.width=20;
@@ -783,15 +742,18 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
     <body onresize="redraw()" onload="legend()">
         <div id="title">
             <select id="config" onchange="redraw()">
-                <option>Position</option>
-                <option>Spacing</option>
-                <option>Position (series axis)</option>
-                <option>Spacing (series axis)</option>
-                <option>Primary angle</option>
-                <option>Secondary angle</option>
-<!--                <option>Side view</option>
-                <option>Top view</option>
-                <option>Front view</option>-->
+<!--                <option data-a2="Primary position [voxel]" data-l2="Pos." data-u2=" voxel" data-c2="[2,1,3]">Position</option>
+                <option data-a2="Primary spacing [voxel]" data-l2="Step" data-u2=" voxel" data-c2="[8,7,9]">Spacing</option>-->
+                <option data-a2="Series position [voxel]" data-l2="Step" data-u2=" voxel" data-c2="10">Position (series axis)</option>
+                <option data-a2="Series spacing [voxel]" data-l2="Step" data-u2=" voxel" data-c2="11">Spacing (series axis)</option>
+                <option data-a2="Primary angle [degree]" data-l2="Rot1" data-u2="&deg;" data-c2="4">Primary angle</option>
+                <option data-a2="Secondary angle [degree]" data-l2="Rot2" data-u2="&deg;" data-c2="5">Secondary angle</option>
+<!--                <option data-a2="x [voxel]" data-l2="x" data-u2=" voxel" data-c2="1">X coordinate</option>
+                <option data-a2="y [voxel]" data-l2="y" data-u2=" voxel" data-c2="2">Y coordinate</option>
+                <option data-a2="z [voxel]" data-l2="z" data-u2=" voxel" data-c2="3">Z coordinate</option>
+                <option data-typ="2D">Side view</option>
+                <option data-typ="2D">Top view</option>
+                <option data-typ="2D">Front view</option>-->
             </select>
         </div>
         <div id="container">
