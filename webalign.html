@@ -1601,7 +1601,24 @@ and open the template in the editor.
                 help.style.display = help.style.display !== "block" ? "block" : "none";
             }
 
+/* 
+   Removal as iframe (ifr)
+   function remover(){
+       removeEventListener("message",remover);
+       ifr.remove();
+   }
+   addEventListener("message",remover);
+   ifr.contentWindow.postMessage("closing","*");
+*/
+
+
             function msgHandler(event){
+                if(event.data==="closing"){
+//                     console.log(event.data);
+                     closeaux();
+                     event.source.postMessage("ok","*");
+                     return;
+                }
                 if(event.data==="ready.")
                     updateaux();
                 else
@@ -1612,11 +1629,17 @@ and open the template in the editor.
 
             const aux_name=Date.now().toString();
             let aux_wnd=false;
+/* won't trigger in iframe */
             addEventListener("beforeunload",()=>aux_wnd && aux_wnd.close());
             function checkaux(){
                 if(aux_wnd && aux_wnd.closed)
                     aux_wnd=false;
                 return aux_wnd;
+            }
+            function closeaux(){
+                if(aux_wnd)
+                    aux_wnd.close();
+                aux_wnd=false;
             }
             
             function updateaux(){
