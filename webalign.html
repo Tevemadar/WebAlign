@@ -234,11 +234,12 @@ and open the template in the editor.
                     if (!image.hasOwnProperty("snr"))
                         image.snr = parseInt(image.filename.match(/_s(\d+)/)[1]);
                 }
-                propagate();
+//                propagate();
 
                 //stripidx=Math.min(images.length-1,(images.length>>1)+1);
                 if (!series.hasOwnProperty("current"))
                     series.current = images.length >> 1;
+                propagate();
                 activateslice(series.current);
                 strippos = images[stripidx].fsx - (window.innerWidth - images[stripidx].fsw) / 2;
                 console.log(images[stripidx]);
@@ -549,18 +550,18 @@ and open the template in the editor.
 //                }
 //                strippick=false;
 //            }
-            function strippick_remove(event) {
-                if (!ready)
-                    return;
-                let x = event.offsetX + strippos;
-                for (let i = 0; i < images.length; i++) {
-                    let image = images[i];
-                    if (image.fsx <= x && x < image.fsx + image.fsw) {
-                        activateslice(i);
-                        break;
-                    }
-                }
-            }
+//            function strippick_remove(event) {
+//                if (!ready)
+//                    return;
+//                let x = event.offsetX + strippos;
+//                for (let i = 0; i < images.length; i++) {
+//                    let image = images[i];
+//                    if (image.fsx <= x && x < image.fsx + image.fsw) {
+//                        activateslice(i);
+//                        break;
+//                    }
+//                }
+//            }
 
             let ouv;
             let active_image;
@@ -1208,12 +1209,43 @@ and open the template in the editor.
                             anchoring = true;
                     }
                 if (anchoring === false) {
-                    let keyslice = images[Math.min(images.length - 1, (images.length >> 1) + 1)];
-                    let ouv = [0, atlas.ydim / 2, atlas.zdim - 1,
-                        atlas.xdim, 0, 0,
-                        0, 0, -atlas.zdim
-                    ];
-                    decomp(ouv, keyslice.width, keyslice.height);
+//                    let keyslice = images[Math.min(images.length - 1, (images.length >> 1) + 1)];
+//                    const keyslice = active_image;
+  
+                    let ouv = [
+                            [0, atlas.ydim / 2, atlas.zdim - 1,
+                                atlas.xdim, 0, 0,
+                                0, 0, -atlas.zdim],
+                            [atlas.xdim / 2, atlas.ydim - 1, atlas.zdim - 1,
+                                0, -atlas.ydim, 0,
+                                0, 0, -atlas.zdim],
+                            [0, atlas.ydim - 1, atlas.zdim / 2,
+                                0, -atlas.ydim, 0,
+                                atlas.xdim, 0, 0]
+                    ][document.getElementById("mode").selectedIndex];
+//                    switch (document.getElementById("mode").selectedIndex) {
+//                        case 0:
+//                            ouv = [0, atlas.ydim / 2, atlas.zdim - 1,
+//                                atlas.xdim, 0, 0,
+//                                0, 0, -atlas.zdim];
+//                            break;
+//                        case 1:
+//                            ouv = [atlas.xdim / 2, atlas.ydim - 1, atlas.zdim - 1,
+//                                0, -atlas.ydim, 0,
+//                                0, 0, -atlas.zdim];
+//                            break;
+//                        case 2:
+//                            ouv = [0, atlas.ydim - 1, atlas.zdim / 2,
+//                                0, -atlas.ydim, 0,
+//                                atlas.xdim, 0, 0];
+//                            break;
+//                    }
+//                    
+//                    let ouv = [0, atlas.ydim / 2, atlas.zdim - 1,
+//                        atlas.xdim, 0, 0,
+//                        0, 0, -atlas.zdim
+//                    ];
+                    decomp(ouv, active_image.width, active_image.height);
                     for (let image of images)
                         recomp(image.ouv = ouv.slice(), image.width, image.height);
                 } else if (anchoring !== true) {
@@ -1463,6 +1495,19 @@ and open the template in the editor.
                 drawnavi();
                 angles();
             }
+            function changemode() {
+                if (!ready) //??
+                    return;
+                if(images.every(image=>!image.anchored)){
+                    propagate();
+                    ouv = active_image.ouv.slice();
+                    drawimage();
+                    drawnavi();
+                    drawstrip();
+                }
+                updateaux();
+                angles();
+            }
             function angles() {
                 if (!ready)
                     return;
@@ -1710,7 +1755,8 @@ and open the template in the editor.
             <!--<button onclick="store()">Store</button><button onclick="restore()">Restore</button><button onclick="ouv_clear()">Clear</button>-->
             <button id="undo" onclick="undo()">Undo</button><button id="redo" onclick="redo()">Redo</button><button onclick="ouv_clear()">Clear</button><button onclick="ouv_pin()">Approve</button>
             <hr>
-            <select id="mode" oninput="angles()">
+            <!--<select id="mode" oninput="angles()">-->
+            <select id="mode" oninput="changemode()">
                 <option>Coronal</option>
                 <option>Sagittal</option>
                 <option>Horizontal</option>
