@@ -122,6 +122,9 @@ and open the template in the editor.
                 box-shadow: 0 1px 0px rgba(0, 0, 0, 0.2), 0 0 0 2px #fff inset;
                 background-color: #f7f7f7;
             }
+            #contrast,#contrast_head{
+                visibility: hidden;
+            }
         </style>
         <script src="slicer.js"></script>
         <script src="math.js"></script>
@@ -1711,6 +1714,13 @@ and open the template in the editor.
                 else
                     aux_wnd=open("diagrams.html",aux_name);
             }
+            
+            function changemodality(event){
+                const visibility=["hidden","visible"][event.target.selectedIndex];
+                document.getElementById("contrast").style.visibility=visibility;
+                document.getElementById("contrast_head").style.visibility=visibility;
+                drawimage();drawstrip();drawnavi();
+            }
         </script>
     </head>
     <body onload="startup()" onmouseup="mup(event)" onmousemove="mmove(event)">
@@ -1721,7 +1731,7 @@ and open the template in the editor.
             Bucket:
             <button onclick="save()">Save</button><button onclick="saveas()" id="saveas">Save as...</button><button onclick="exprt()">Export overlays</button>
             <div class="ctrlrow">
-                <select id="modality" oninput="drawimage();drawstrip();drawnavi();" disabled>
+                <select id="modality" oninput="changemodality(event)" disabled>
                     <option>Segmentation</option>
                     <option>Template</option>
                 </select>
@@ -1735,6 +1745,8 @@ and open the template in the editor.
                     Filmstrip
                     <input id="stripalpha" type="range" min="0" max="100" step="1" value="100" oninput="drawstrip()">
                     <input id="stripoutline" type="color" value="#0000FF" oninput="drawstrip()">
+                    <span id="contrast_head">Contrast</span>
+                    <input id="contrast" type="range" min="0" max="255" step="1" value="255" oninput="imagenavi();drawstrip();">
             </div>
 <!--            <div class="ctrlrow">
                 Overlay:
