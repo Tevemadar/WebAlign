@@ -823,6 +823,22 @@ and open the template in the editor.
                     return;
                 store_undo(false);
             }
+            function ouv_center() {
+                store_undo(false);
+                ouv = [
+                        [0, atlas.ydim / 2, atlas.zdim - 1,
+                            atlas.xdim, 0, 0,
+                            0, 0, -atlas.zdim],
+                        [atlas.xdim / 2, atlas.ydim - 1, atlas.zdim - 1,
+                            0, -atlas.ydim, 0,
+                            0, 0, -atlas.zdim],
+                        [0, atlas.ydim - 1, atlas.zdim / 2,
+                            0, -atlas.ydim, 0,
+                            atlas.xdim, 0, 0]
+                ][document.getElementById("mode").selectedIndex];
+                active_image.ouv=ouv.slice();
+                drawimage();drawstrip();drawnavi();updateaux();
+            }
 
             let mainimg = false;
             let marker = false;
@@ -1723,7 +1739,7 @@ and open the template in the editor.
             }
         </script>
     </head>
-    <body onload="startup()" onmouseup="mup(event)" onmousemove="mmove(event)">
+    <body onload="startup()" onmouseup="mup(event);scrollup()" onmousemove="mmove(event)">
         <div id="controls">
             <span id="image"><br></span><button style="float: right" onclick="toggleHelp()">?</button><br>
             <span id="atlas"></span>
@@ -1765,7 +1781,7 @@ and open the template in the editor.
             </div>
             <hr>-->
             <!--<button onclick="store()">Store</button><button onclick="restore()">Restore</button><button onclick="ouv_clear()">Clear</button>-->
-            <button id="undo" onclick="undo()">Undo</button><button id="redo" onclick="redo()">Redo</button><button onclick="ouv_clear()">Clear</button><button onclick="ouv_pin()">Approve</button>
+            <button id="undo" onclick="undo()">Undo</button><button id="redo" onclick="redo()">Redo</button><button onclick="ouv_clear()">Clear</button><button onclick="ouv_pin()">Approve</button><button onclick="ouv_center()">Center</button>
             <hr>
             <!--<select id="mode" oninput="angles()">-->
             <select id="mode" oninput="changemode()">
