@@ -156,8 +156,10 @@ and open the template in the editor.
             let gray;
             async function startup() {
                 let start = Date.now();
-                if (args.embedded)
-                    document.getElementById("saveas").style.display = "none";
+                if (args.embedded){
+                    document.getElementById("btn_saveas").style.display = "none";
+                    document.getElementById("btn_export").style.display = "none";
+                }
                 popup("Loading data");
                 window.addEventListener("resize", resize);
                 resize();
@@ -1746,7 +1748,7 @@ and open the template in the editor.
             <span id="atlas"></span>
             <hr>
             Bucket:
-            <button onclick="save()">Save</button><button onclick="saveas()" id="saveas">Save as...</button><button onclick="exprt()">Export overlays</button>
+            <button onclick="save()">Save</button><button onclick="saveas()" id="btn_saveas">Save as...</button><button id="btn_export" onclick="exprt()">Export overlays</button>
             <div class="ctrlrow">
                 <select id="modality" oninput="changemodality(event)" disabled>
                     <option>Segmentation</option>
