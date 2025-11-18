@@ -1228,6 +1228,7 @@ and open the template in the editor.
                             anchoring = true;
                     }
                 if (anchoring === false) {
+                    const keyslice = active_image ?? images[Math.min(images.length - 1, (images.length >> 1) + 1)];
 //                    let keyslice = images[Math.min(images.length - 1, (images.length >> 1) + 1)];
 //                    const keyslice = active_image;
   
@@ -1264,7 +1265,7 @@ and open the template in the editor.
 //                        atlas.xdim, 0, 0,
 //                        0, 0, -atlas.zdim
 //                    ];
-                    decomp(ouv, active_image.width, active_image.height);
+                    decomp(ouv, keyslice.width, keyslice.height);
                     for (let image of images)
                         recomp(image.ouv = ouv.slice(), image.width, image.height);
                 } else if (anchoring !== true) {
