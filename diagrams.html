@@ -94,7 +94,7 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
 
                 mode = event.data.mode;
                 data = event.data.sections.map(section => {
-                    const {filename, width, height, snr, ouv, anchored} = section;
+                    const {filename, width, height, snr, ouv, anchored, approved} = section;
 
                     const o = ouv.slice(0, 3);
                     const u = ouv.slice(3, 6);
@@ -115,7 +115,7 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
                      * 6: r3
                      */
 
-                    return {filename, width, height, snr, ouv, anchored, corners, midpoint, coordinates};
+                    return {filename, width, height, snr, ouv, anchored, approved, corners, midpoint, coordinates};
                 });
 
                 current = data[event.data.idx];
@@ -275,7 +275,8 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
                 ctx.strokeStyle="green";
                 ctx.lineWidth=1;
                 for(let i=0;i<labels.length;i++){
-                    ctx.fillStyle=data[i]===current?"orange":data[i].anchored?"green":"white";
+//                    ctx.fillStyle=data[i]===current?"orange":data[i].anchored?"green":"white";
+                    ctx.fillStyle=data[i]===current?"orange":data[i].approved?"green":data[i].anchored?"hotpink":"white";
                     ctx.beginPath();
                     ctx.ellipse(labels[i].tx,labels[i].ty,5,5,0,0,Math.PI*2);
                     ctx.fill();
@@ -730,7 +731,8 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
             }
             function legend() {
                 legdot("cnv_cur","orange");
-                legdot("cnv_anc","green");
+                legdot("cnv_done","green");
+                legdot("cnv_notsaved","hotpink");
                 legdot("cnv_nanc","white");
                 legline("cnv_trend","orange");
                 legline("cnv_inc","red");
@@ -765,7 +767,8 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
                     <p style="margin-top: 0;margin-bottom: 0.5em;">Info</p>
                     <table>
                         <tr><td><canvas id="cnv_cur"></canvas></td><td>Current section</td></tr>
-                        <tr><td><canvas id="cnv_anc"></canvas></td><td>Section anchored</td></tr>
+                        <tr><td><canvas id="cnv_done"></canvas></td><td>Section marked done (saved)</td></tr>
+                        <tr><td><canvas id="cnv_notsaved"></canvas></td><td>Section with anchoring in progress (not saved)</td></tr>
                         <tr><td><canvas id="cnv_nanc"></canvas></td><td>Section not anchored</td></tr>
                         <tr><td><canvas id="cnv_trend"></canvas></td><td>Trend</td></tr>
                         <tr><td><canvas id="cnv_inc"></canvas></td><td>Value increasing</td></tr>
