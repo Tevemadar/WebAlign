@@ -44,7 +44,7 @@ and open the template in the editor.
                 background: grey;
             }
             #navi{
-                background: green;
+                background: white /*green*/;
                 overflow: hidden;
             }
             #vsiz{
@@ -94,6 +94,8 @@ and open the template in the editor.
                 padding:0;
                 /*background: red;*/
                 display:flex;
+                border-bottom: 5px solid transparent;
+                border-right: 5px solid transparent;
             }
             .stepgroup>button{
                 margin:0;
@@ -109,6 +111,7 @@ and open the template in the editor.
             .imgcb{
                 position: absolute;
                 top: 23px;
+                outline: 5px solid black;
             }
             /*input[type=range]{*/
             /*width:100px;*/
@@ -131,6 +134,24 @@ and open the template in the editor.
             }
             #contrast,#contrast_head{
                 visibility: hidden;
+            }
+            #rot1{
+                background: #E6B4B4;
+            }
+            #rot2{
+                background: #B4E6B4;
+            }
+            #rot3{
+                background: #B4B4E6;
+            }
+            #maingroup{
+                border-color: #B4B4E6;
+            }
+            #group1{
+                border-color: #E6B4B4;
+            }
+            #group2{
+                border-color: #B4E6B4;
             }
         </style>
         <script src="slicer.js"></script>
@@ -245,7 +266,7 @@ and open the template in the editor.
                 for (let image of images) {
                     if (image.hasOwnProperty("ouv")) {
                         image.anchored = true;
-                        image.approved = true;
+                        //image.approved = true;
                     }
                     if (!image.hasOwnProperty("snr"))
                         image.snr = parseInt(image.filename.match(/_s(\d+)/)[1]);
@@ -272,10 +293,12 @@ and open the template in the editor.
                 cover();
             }
             function cbchange(image) {
-                if(image.approved)
-                    image.approved = false;
-                else {
-                    image.approved = true;
+                if(image.wadone) {
+                    image.wadone = false;
+                    ouv_clear();
+                    propagate();
+                } else {
+                    image.wadone = true;
                     if(!image.anchored) {
                         image.ouv = ouv.slice();
                         image.anchored = true;
@@ -427,12 +450,12 @@ and open the template in the editor.
                             ctx.fillRect(image.fsx - strippos - 10, 0, image.fsw + 20, 128);
                             ctx.fillStyle = "black";
                         }
-                        if (image.anchored && image.approved) {
+                        if (image.anchored && image.wadone) {
                             ctx.fillStyle = "green";
                             ctx.fillRect(image.fsx - strippos - 5, 0, image.fsw + 10, 128);
                             ctx.fillStyle = "black";
                         }
-                        if (image.anchored && !image.approved) {
+                        if (image.anchored && !image.wadone) {
                             ctx.fillStyle = "hotpink";
                             ctx.fillRect(image.fsx - strippos - 5, 0, image.fsw + 10, 128);
                             ctx.fillStyle = "black";
@@ -521,7 +544,7 @@ and open the template in the editor.
                     }
                 for(const image of images) {
                     image.cb.disabled = image !== active_image;
-                    image.cb.checked = image.approved;
+                    image.cb.checked = image.wadone;
                     image.cb.style.left = (image.fsx - strippos - 5) + "px";
                 }
             }
@@ -806,8 +829,16 @@ and open the template in the editor.
                 document.getElementById("undo").disabled = document.getElementById("redo").disabled = true;
             }
             function store_undo(clearing) {
+//                if(typeof clearingOrSpecial === "object") {
+//                    undo_pos++;
+//                    undo_stack.push(clearingOrSpecial);
+//                    document.getElementById("undo").disabled = false;
+//                    document.getElementById("redo").disabled = true;
+//                    // todo at caller site: everything else - clear ww_done, propagate, redraw
+//                    return;
+//                }
                 active_image.anchored = !clearing;
-                active_image.approved = false;
+                active_image.wadone = false;
                 active_image.ouv = ouv.slice();
                 undo_pos++;
                 undo_stack.splice(undo_pos);
@@ -828,15 +859,16 @@ and open the template in the editor.
 //                    idx++;
 //                }
 // Clearing nonlinear "done" markerings from altered sections
-                delete series.sections[stripidx].wwdone;
+//                delete series.sections[stripidx].wwdone;
+                delete active_image.wwdone;
                 let idx = stripidx - 1;
                 while (idx >= 0 && !images[idx].anchored) {
-                    delete series.sections[idx].wwdone;
+                    delete /*series.sections*/images[idx].wwdone;
                     idx--;
                 }
                 idx = stripidx + 1;
                 while (idx < images.length && !images[idx].anchored) {
-                    delete series.sections[idx].wwdone;
+                    delete /*series.sections*/images[idx].wwdone;
                     idx++;
                 }
 
@@ -1453,11 +1485,19 @@ and open the template in the editor.
             async function dosave() {
                 for (let i = 0; i < images.length; i++) {
                     let image = images[i];
-//                    if (image.anchored)
-                    if (image.approved)
+                    if (image.anchored)
+//                    if (image.approved)
                         series.sections[i].ouv = image.ouv;
                     else
                         delete series.sections[i].ouv;
+                    if (image.wadone)
+                        series.sections[i].wadone = true;
+                    else
+                        delete series.sections[i].wadone;
+                    if (image.wwdone)
+                        series.sections[i].wwdone = true;
+                    else
+                        delete series.sections[i].wwdone;
                 }
                 let upload = await fetch(
                         `https://data-proxy.ebrains.eu/api/v1/buckets/${bucket}/${filename}`, {
@@ -1607,6 +1647,10 @@ and open the template in the editor.
             function changemode() {
                 if (!ready) //??
                     return;
+                const mode = document.getElementById("mode").selectedIndex;
+                document.getElementById("group1").style.borderColor = ["#E6B4B4","transparent","#B4E6B4"][mode];
+                document.getElementById("group2").style.borderColor = ["#B4E6B4","#B4E6B4","transparent"][mode];
+                document.getElementById("group3").style.borderColor = ["transparent","#E6B4B4","#E6B4B4"][mode];
                 if(images.every(image=>!image.anchored)){
                     propagate();
                     ouv = active_image.ouv.slice();
@@ -1701,9 +1745,22 @@ and open the template in the editor.
                 }
             }
             function unify() {
+//                const undo_item = {
+//                    action: "unify",
+//                    images: images.map((image, idx) => ({
+//                        wwdone: series.sections[stripidx].wwdone,
+//                        ouv: image.ouv.slice(),
+//                        anchored: image.anchored,
+//                        approved: image.approved
+//                    }))
+//                };
+//                store_undo(undo_item);
+                
                 let mode = document.getElementById("mode").selectedIndex;
                 let [rot1, rot2] = rot123uvfrom(ouv, mode);
                 for (let image of images) {
+                    image.wadone = false;
+                    delete image.wwdone;
                     let rot123uv = rot123uvfrom(image.ouv, mode);
                     rot123uv[0] = rot1;
                     rot123uv[1] = rot2;
@@ -1817,7 +1874,7 @@ and open the template in the editor.
                     snr:section.snr,
                     ouv:section.ouv,
                     anchored:section.anchored,
-                    approved:section.approved
+                    approved:section.wadone
                 }))});
             }
             
@@ -1910,7 +1967,7 @@ and open the template in the editor.
         </div>
         <div id="hsiz" class="hsep" onmousedown="hresize(event)"></div>
         <div id="main">
-            <div class="stepgroup">
+            <div class="stepgroup" id="maingroup">
                 <button onclick="mainstep(1, 0)">&#x25c0;</button>
                 <button onclick="mainstep(-1, 0)">&#x25b6;</button>
                 <button onclick="mainstep(0, 1)">&#x25b2;</button>
