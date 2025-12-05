@@ -625,7 +625,8 @@ and open the template in the editor.
                     for (let i = 0; i < images.length; i++) {
                         let image = images[i];
                         if (image.fsx <= x && x < image.fsx + image.fsw) {
-                            activateslice(i);
+                            if(series.current !== i)
+                                activateslice(i);
                             break;
                         }
                     }
