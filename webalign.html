@@ -146,12 +146,16 @@ and open the template in the editor.
             }
             #maingroup{
                 border-color: #B4B4E6;
+                background: #B4B4E6;
             }
             #group1{
                 border-color: #E6B4B4;
             }
             #group2{
                 border-color: #B4E6B4;
+            }
+            .markermode{
+                background: yellow;
             }
         </style>
         <script src="slicer.js"></script>
@@ -446,9 +450,11 @@ and open the template in the editor.
                 for (const image of images)
                     if (image.fsx - strippos >= -image.fsw && image.fsx - strippos <= width) {
                         if (image === current) {
-                            ctx.fillStyle = "orange";
-                            ctx.fillRect(image.fsx - strippos - 10, 0, image.fsw + 20, 128);
                             ctx.fillStyle = "black";
+                            ctx.fillRect(image.fsx - strippos - 15, 0, image.fsw + 30, 128);
+//                            ctx.fillStyle = "orange";
+//                            ctx.fillRect(image.fsx - strippos - 10, 0, image.fsw + 20, 128);
+//                            ctx.fillStyle = "black";
                         }
                         if (image.anchored && image.wadone) {
                             ctx.fillStyle = "green";
@@ -571,7 +577,7 @@ and open the template in the editor.
             }
             function stripscroll(event) {
                 event.preventDefault();
-                strippos -= event.deltaY;
+                strippos += event.deltaY;
                 drawstrip();
             }
             let strippick = false;
@@ -625,8 +631,7 @@ and open the template in the editor.
                     for (let i = 0; i < images.length; i++) {
                         let image = images[i];
                         if (image.fsx <= x && x < image.fsx + image.fsw) {
-                            if(series.current !== i)
-                                activateslice(i);
+                            activateslice(i);
                             break;
                         }
                     }
@@ -736,7 +741,7 @@ and open the template in the editor.
                             ctx.strokeStyle = "black";
                             ctx.lineWidth = 2;
                             ctx.beginPath();
-                            switch (marker.type) {
+                            switch (markermode) {
                                 case "cross":
                                     ctx.moveTo(x + w * marker.x - 10, y + h * marker.y);
                                     ctx.lineTo(x + w * marker.x + 10, y + h * marker.y);
@@ -961,6 +966,7 @@ and open the template in the editor.
 
             let mainimg = false;
             let marker = false;
+            let markermode = "cross";
             let slice = false;
             function drawimage() {
                 if (!zoomer)
@@ -1156,7 +1162,8 @@ and open the template in the editor.
                         store_undo();
                     drag_ouv = false;
                     if (marker) {
-                        marker.type = "cross";
+                        markermode = "cross";
+                        markerhelper();
                         drawimage();
                     }
                 }
@@ -1210,20 +1217,31 @@ and open the template in the editor.
             }
             function maindown(event) {
                 event.preventDefault();
-                if (!marker || event.code === "Space")
-                    marker = {type: "cross",
-                        x: (mainx - mainimg.x) / mainimg.w,
-                        y: (mainy - mainimg.y) / mainimg.h};
-                if (event.code === "Escape" || event.code === "Delete" || event.code === "Backspace")
-                    marker = false;
-                if (event.code === "Space")
-                    marker.type = "cross";
-                if (event.code === "ArrowUp" || event.code === "ArrowDown")
-                    marker.type = "vscale";
-                if (event.code === "ArrowLeft" || event.code === "ArrowRight")
-                    marker.type = "hscale";
-                if (event.code === "PageUp" || event.code === "PageDown")
-                    marker.type = "rotate";
+                switch(event.code){
+                    case "Space":
+                        marker = {x: (mainx - mainimg.x) / mainimg.w,
+                                  y: (mainy - mainimg.y) / mainimg.h};
+                        break;
+                    case "Escape":
+                    case "Delete":
+                    case "Backspace":
+                        marker = false;
+                        markermode = "cross";
+                        break;
+                    case "ArrowUp":
+                    case "ArrowDown":
+                        markermode = "vscale";
+                        break;
+                    case "ArrowLeft":
+                    case "ArrowRight":
+                        markermode = "hscale";
+                        break;
+                    case "PageUp":
+                    case "PageDown":
+                        markermode = "rotate";
+                        break;
+                }
+                markerhelper();
                 drawimage();
             }
             function mmove(event) {
@@ -1273,13 +1291,13 @@ and open the template in the editor.
                         recomp(ouv);
                         break;
                     case "mdrag":
-                        if (!marker || marker.type === "cross") {
+                        if (!marker || markermode === "cross") {
                             for (let i = 0; i < 3; i++) {
                                 ouv[i] += ouv[i + 3] * (drag.x - event.offsetX) / mainimg.w;
                                 ouv[i] += ouv[i + 6] * (drag.y - event.offsetY) / mainimg.h;
                             }
                         } else {
-                            switch (marker.type) {
+                            switch (markermode) {
                                 case "vscale":
                                     let vfactor = ((drag.y - mainimg.y) - mainimg.h * marker.y) / ((event.offsetY - mainimg.y) - mainimg.h * marker.y);
                                     for (let i = 0; i < 3; i++) {
@@ -1902,7 +1920,19 @@ and open the template in the editor.
                 drawimage();
                 drawnavi();
                 drawstrip();
-                
+            }
+            
+            function markerhelper(event){
+                if(event){
+                    if(event.target.id==="btn_"+markermode)
+                        markermode="cross";
+                    else
+                        markermode=event.target.id.substr(4);
+                    drawimage();
+                }
+                document.getElementsByClassName("markermode")[0]?.classList.remove("markermode");
+                if(markermode!=="cross")
+                    document.getElementById("btn_"+markermode).classList.add("markermode");
             }
         </script>
     </head>
@@ -1919,7 +1949,7 @@ and open the template in the editor.
                     <option>Template</option>
                 </select>
                 &#x2194;&#x2195;<input id="panstep" type="number" min="0" max="20" step="0.1" value="1">
-                <!--1f504-->&#x21BA;<input id="rotstep" type="number" min="0" max="20" step="0.1" value="1">
+                <!--1f504-->&#x2B6E;<input id="rotstep" type="number" min="0" max="20" step="0.1" value="1">
             </div>
             <div style="position: static; display: grid; grid-template-columns: auto auto auto;">
                     Overlay
@@ -1975,13 +2005,17 @@ and open the template in the editor.
                 <button onclick="mainstep(0, -1)">&#x25bc;</button>
                 <button onclick="mainrot(-1)">&#x21b6;</button>
                 <button onclick="mainrot(1)">&#x21b7;</button>
+                &nbsp;
+                <button id="btn_hscale" onclick="markerhelper(event)">&#x2194;</button>
+                <button id="btn_vscale" onclick="markerhelper(event)">&#x2195;</button>
+                <button id="btn_rotate" onclick="markerhelper(event)">&#x2B6E;</button>
             </div>
-            <canvas id="maincnv" tabindex="1"
+            <canvas id="maincnv" tabindex="1" style="outline:none"
                     onmousedown="maindrag(event)"
                     onmousemove="mainmove(event)"
                     onkeydown="maindown(event)"
-                    onmouseover="/*event.target.focus()*/"
-                    onmouseout="/*event.target.blur();*/mainmove(event)"></canvas>
+                    onmouseover="event.target.focus()"
+                    onmouseout="event.target.blur();mainmove(event)"></canvas>
         </div>
         <div id="hsep" class="hsep"></div>
         <div id="navi">
