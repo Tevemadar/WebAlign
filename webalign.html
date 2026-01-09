@@ -201,6 +201,29 @@ and open the template in the editor.
                 series = await fetch(url.includes("?") ? url : url + "?" + Date.now()).then(response => response.json());
                 if (series.hasOwnProperty("mode"))
                     document.getElementById("mode").selectedIndex = series.mode;
+
+                if (!series.hasOwnProperty("settings"))
+                    series.settings = {};
+                const settings = series.settings;
+                if (settings.hasOwnProperty("overlay")) {
+                    const overlay = settings.overlay;
+                    const alpha = overlay.alpha;
+                    document.getElementById("mainalpha").value = alpha;
+                    const outline = document.getElementById("mainoutline");
+                    outline.value = overlay.color;
+                    outline.disabled = alpha !== 100;
+                } else
+                    settings.overlay = {};
+                if (settings.hasOwnProperty("filmstrip")) {
+                    const filmstrip = settings.filmstrip;
+                    const alpha = filmstrip.alpha;
+                    document.getElementById("stripalpha").value = alpha;
+                    const outline = document.getElementById("stripoutline");
+                    outline.value = filmstrip.color;
+                    outline.disabled = alpha !== 100;
+                } else
+                    settings.filmstrip = {};
+
                 console.log(Date.now() - start, "Got series");
                 /*let*/ atlas = new Promise(resolve => new Worker("getlas.js?" + series.atlas)
                             .onmessage = event => {
@@ -1502,6 +1525,14 @@ and open the template in the editor.
                 dosave();
             }
             async function dosave() {
+                const settings = series.settings;
+                const overlay = settings.overlay;
+                overlay.color = document.getElementById("mainoutline").value;
+                overlay.alpha = document.getElementById("mainalpha").valueAsNumber;
+                const filmstrip = settings.filmstrip;
+                filmstrip.color = document.getElementById("stripoutline").value;
+                filmstrip.alpha = document.getElementById("stripalpha").valueAsNumber;
+
                 for (let i = 0; i < images.length; i++) {
                     let image = images[i];
                     if (image.anchored)
