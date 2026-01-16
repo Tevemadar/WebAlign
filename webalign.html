@@ -1983,16 +1983,27 @@ and open the template in the editor.
             <span id="atlas"></span>
             <hr>
             <div id="bucket">Bucket:
-            <button onclick="save()">Save</button><button onclick="saveas()" id="btn_saveas">Save as...</button><button id="btn_export" onclick="exprt()">Export overlays</button></div>
+                <button onclick="save()">Save</button>
+                <button onclick="saveas()" id="btn_saveas">Save as...</button>
+                <button id="btn_export" onclick="exprt()">Export overlays</button>
+                <hr>
+            </div>
+            <div style="display: grid; grid-template-columns: auto auto;">
+                <div>Pan step (&#x25c0;&#x25b6;&#x25b2;&#x25bc;)</div>
+                <div><input id="panstep" type="number" min="0" max="20" step="0.1" value="1">[voxel]</div>
+                <!--<div>Rotate (&#x21b6;/&#x21b7;) step</div>-->
+                <div>Rotate step (<span style="display: inline-block;transform: scale(1,-1);">&#x2b6e;\&#x2b6f;</span>)</div>
+                <div><input id="rotstep" type="number" min="0" max="20" step="0.1" value="1">[degree]</div>
+            </div>
             <div class="ctrlrow">
                 <select id="modality" oninput="changemodality(event)" disabled>
                     <option>Segmentation</option>
                     <option>Template</option>
                 </select>
-                &#x2194;&#x2195;<input id="panstep" type="number" min="0" max="20" step="0.1" value="1">
-                <!--1f504-->&#x2B6E;<input id="rotstep" type="number" min="0" max="20" step="0.1" value="1">
+<!--                &#x2194;&#x2195;<input id="panstep" type="number" min="0" max="20" step="0.1" value="1">
+                1f504&#x2B6E;<input id="rotstep" type="number" min="0" max="20" step="0.1" value="1">-->
             </div>
-            <div style="position: static; display: grid; grid-template-columns: auto auto auto;">
+            <div style="display: grid; grid-template-columns: auto auto auto;">
                     Overlay
                     <input id="mainalpha" type="range" min="0" max="100" step="1" value="100" oninput="drawimage()">
                     <input id="mainoutline" type="color" value="#0000FF" oninput="drawimage()">
