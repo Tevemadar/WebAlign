@@ -110,7 +110,7 @@ and open the template in the editor.
             }
             .imgcb{
                 position: absolute;
-                top: 23px;
+                top: 22px;
                 outline: 5px solid black;
             }
             /*input[type=range]{*/
@@ -269,7 +269,7 @@ and open the template in the editor.
                     } else {
                         image.fsh = 128;
                         image.fsy = 0;
-                        image.fsw = w * 128 / h;
+                        image.fsw = Math.round(w * 128 / h);
                     }
                     fsw += 30 + image.fsw;
 
@@ -470,6 +470,8 @@ and open the template in the editor.
                 else
                     alpha = parseInt(so.value.substring(1), 16);
 
+                const posbak = strippos;
+                strippos = Math.round(strippos);
                 for (const image of images)
                     if (image.fsx - strippos >= -image.fsw && image.fsx - strippos <= width) {
                         if (image === current) {
@@ -574,8 +576,9 @@ and open the template in the editor.
                 for(const image of images) {
                     image.cb.disabled = image !== active_image;
                     image.cb.checked = image.wadone;
-                    image.cb.style.left = (image.fsx - strippos - 5) + "px";
+                    image.cb.style.left = (image.fsx - strippos - 4) + "px";
                 }
+                strippos = posbak;
             }
             
             let scrollpick = false;
