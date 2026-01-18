@@ -157,6 +157,71 @@ and open the template in the editor.
             .markermode{
                 background: yellow;
             }
+            
+            #diag-container{
+                position: absolute;
+                width: 150px;
+                height: 100px;
+                margin: 0;
+                padding: 0;
+                background: purple;
+                display: none;
+            }
+            #diag-skeleton{
+                height: 100%;
+                width: 100%;
+                background: yellow;
+                position: absolute;
+            }
+            .diag-h{
+                height: 5px;
+                background: lightblue;
+            }
+            .diag-v{
+                width: 5px;
+                background: blue;
+            }
+            #diag-cell1,#diag-cell9{
+                cursor: nwse-resize;
+            }
+            #diag-cell2,#diag-cell8{
+                cursor: ns-resize;
+            }
+            #diag-cell3,#diag-cell7{
+                cursor: nesw-resize;
+            }
+            #diag-cell4,#diag-cell6{
+                cursor: ew-resize;
+            }
+            #diag-cell5{
+                cursor: move;
+            }
+            #diag-cnv{
+                position: absolute;
+                top: 0;
+                left: 0;
+                margin: 0;
+                padding: 0;
+                pointer-events: none;
+            }
+            #diag-close,#diag-select,#diag-popout{
+                position: absolute;
+                display: none;
+            }
+            #diag-select{
+                left: 15px;
+            }
+            #diag-close{
+                right: 15px;
+            }
+            #diag-popout{
+                bottom: 0;
+                left: 0;
+                right: 0;
+                width: fit-content;
+                margin-left: auto;
+                margin-right: auto;
+            }
         </style>
         <script src="slicer.js"></script>
         <script src="math.js"></script>
@@ -1897,14 +1962,14 @@ and open the template in the editor.
                 }))});
             }
             
-            function auxwnd() {
-                if(aux_wnd && aux_wnd.closed)
-                    aux_wnd=false;
-                if(aux_wnd)
-                    aux_wnd.focus();
-                else
-                    aux_wnd=open("diagrams.html",aux_name);
-            }
+//            function auxwnd() {
+//                if(aux_wnd && aux_wnd.closed)
+//                    aux_wnd=false;
+//                if(aux_wnd)
+//                    aux_wnd.focus();
+//                else
+//                    aux_wnd=open("diagrams.html",aux_name);
+//            }
             
             function changemodality(event){
                 const visibility=["hidden","visible"][event.target.selectedIndex];
@@ -1934,9 +1999,132 @@ and open the template in the editor.
                 if(markermode!=="cross")
                     document.getElementById("btn_"+markermode).classList.add("markermode");
             }
+
+            const diagdata = {x: 0, y: 0, w: 150, h: 100};
+            let diagdrag;
+    
+            function popdiag(){
+                if(aux_wnd && aux_wnd.closed)
+                    aux_wnd=false;
+                if(aux_wnd)
+                    aux_wnd.focus();
+                else{
+                    diagdata.w=200;
+                    diagdata.h=150;
+                    diagdata.x=innerWidth-diagdata.w;
+                    diagdata.y=0;
+                    const d=document.getElementById("diag-container");
+                    d.style.display="block";
+                    d.style.left=diagdata.x+"px";
+                    d.style.top=diagdata.y+"px";
+                    d.style.width=diagdata.w+"px";
+                    d.style.height=diagdata.h+"px";
+                    diagdraw();
+                }
+            }
+            function diagclose(){
+                document.getElementById("diag-container").style.display="none";
+            }
+            function diagpopout(){
+                document.getElementById("diag-container").style.display="none";
+                aux_wnd=open("diagrams.html",aux_name);
+            }
+            function diagdraw(){
+                const {w, h} = diagdata;
+                const cnv = document.getElementById("diag-cnv");
+                cnv.width = w;
+                cnv.height = h;
+                const ctx = cnv.getContext("2d");
+                ctx.fillStyle = "white";
+                ctx.fillRect(0, 0, w, h);
+                ctx.strokeStyle = "red";
+                ctx.strokeRect(0, 0, w, h);
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(w, h);
+                ctx.moveTo(0, h);
+                ctx.lineTo(w, 0);
+                ctx.stroke();
+            }
+            function diagdown(event) {
+                diagdrag = {...diagdata, id: event.target.id, mx: event.clientX, my: event.clientY};
+            }
+            function diagup(){
+                diagdrag=false;
+            }
+            function diagover() {
+                document.getElementById("diag-close").style.display = "block";
+                document.getElementById("diag-popout").style.display = "block";
+                document.getElementById("diag-select").style.display = "block";
+            }
+            function diagout() {
+                document.getElementById("diag-close").style.display = "none";
+                document.getElementById("diag-popout").style.display = "none";
+                document.getElementById("diag-select").style.display = "none";
+            }
+            function diagmove(event) {
+                if (!diagdrag)
+                    return;
+                const dx = event.clientX - diagdrag.mx;
+                const dy = event.clientY - diagdrag.my;
+                diagdrag.mx = event.clientX;
+                diagdrag.my = event.clientY;
+                let {x, y, w, h} = diagdrag;
+                switch (diagdrag.id.substring("diag-cell".length)) {
+                    case "1":
+                        x += dx;
+                        y += dy;
+                        w -= dx;
+                        h -= dy;
+                        break;
+                    case "2":
+                        y += dy;
+                        h -= dy;
+                        break;
+                    case "3":
+                        w += dx;
+                        y += dy;
+                        h -= dy;
+                        break;
+                    case "4":
+                        x += dx;
+                        w -= dx;
+                        break;
+                    case "5":
+                        x += dx;
+                        y += dy;
+                        break;
+                    case "6":
+                        w += dx;
+                        break;
+                    case "7":
+                        x += dx;
+                        w -= dx;
+                        h += dy;
+                        break;
+                    case "8":
+                        h += dy;
+                        break;
+                    case "9":
+                        w += dx;
+                        h += dy;
+                        break;
+                }
+                diagdrag.x=x;
+                diagdrag.y=y;
+                diagdrag.w=w;
+                diagdrag.h=h;
+
+                const container=document.getElementById("diag-container");
+                container.style.left = (diagdata.x = Math.max(x, 0)) + "px";
+                container.style.top = (diagdata.y = Math.max(y, 0)) + "px";
+                container.style.width = (diagdata.w = Math.max(w, 150)) + "px";
+                container.style.height = (diagdata.h = Math.max(h, 100)) + "px";
+                diagdraw();
+            }
         </script>
     </head>
-    <body onload="startup()" onmouseup="mup(event);scrollup()" onmousemove="mmove(event);scrollmove(event)">
+    <body onload="startup()" onmouseup="mup(event);scrollup();diagup()" onmousemove="mmove(event);scrollmove(event);diagmove(event)">
         <div id="controls">
             <span id="image"><br></span><button style="float: right" onclick="toggleHelp()">?</button><br>
             <span id="atlas"></span>
@@ -1993,7 +2181,8 @@ and open the template in the editor.
             <input type="number" id="rot2" min="-180" max="180" step="0.1" onchange="docalc()">
             <input type="number" id="rot3" min="-180" max="180" step="0.1" onchange="docalc()"><br>
             <button onclick="unify()">Apply to all</button><br>
-            <button onclick="auxwnd()">Diagrams</button>
+            <!--<button onclick="auxwnd()">Diagrams</button>-->
+            <button onclick="popdiag()">Diagrams</button>
             <div id="log" hidden></div>
         </div>
         <div id="hsiz" class="hsep" onmousedown="hresize(event)"></div>
@@ -2078,6 +2267,32 @@ and open the template in the editor.
                 <li>Press <kbd>Esc</kbd> to make the fixed point marker disappear</li>
             </ul>
             <a href="https://quint-webtools.readthedocs.io/en/latest/WebAlign.html" target="_blank">Documentation</a><br>
+        </div>
+        <div id="diag-container" onmousedown="diagdown(event)">
+            <table id="diag-skeleton" onmouseover="diagover()" onmouseout="diagout()">
+                <tr class="diag-h">
+                    <td id="diag-cell1" class="diag-v"></td>
+                    <td id="diag-cell2"></td>
+                    <td id="diag-cell3" class="diag-v"></td>
+                </tr>
+                <tr>
+                    <td id="diag-cell4" class="diag-v"></td>
+                    <td id="diag-cell5"></td>
+                    <td id="diag-cell6" class="diag-v"></td>
+                </tr>
+                <tr class="diag-h">
+                    <td id="diag-cell7" class="diag-v"></td>
+                    <td id="diag-cell8"></td>
+                    <td id="diag-cell9" class="diag-v"></td>
+                </tr>
+            </table>
+            <canvas id="diag-cnv"></canvas>
+            <button id="diag-close" onclick="diagclose()" onmouseover="diagover()" onmouseout="diagout()">X</button>
+            <button id="diag-popout" onclick="diagpopout()" onmouseover="diagover()" onmouseout="diagout()">O</button>
+            <select id="diag-select" onmouseover="diagover()" onmouseout="diagout()">
+                <option>...</option>
+                <option>...</option>
+            </select>
         </div>
     </body>
 </html>
