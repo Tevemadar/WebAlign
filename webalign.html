@@ -178,6 +178,7 @@ and open the template in the editor.
         <script src="https://cdn.jsdelivr.net/gh/Tevemadar/NetUnzip/netunzip.min.js"></script>
         <script src="cache.js"></script>
         <script src="zoomer.js"></script>
+        <script src="merger.js"></script>
         <script>
             let args = JSON.parse(decodeURIComponent(location.search.substring(1)));
             //args.embedded = true;
@@ -2054,6 +2055,9 @@ and open the template in the editor.
             <input type="number" id="rot3" min="-180" max="180" step="0.1" onchange="docalc()"><br>
             <button onclick="unify()">Apply to all</button><br>
             <button onclick="auxwnd()">Diagrams</button>
+            <hr>
+            <input id="load_json" type="file" accept="application/json" oninput="load_json(event)" hidden>
+            <button onclick="document.getElementById('load_json').click()">Load QuickNII/VisuAlign JSON</button>
             <div id="log" hidden></div>
         </div>
         <div id="hsiz" class="hsep" onmousedown="hresize(event)"></div>
