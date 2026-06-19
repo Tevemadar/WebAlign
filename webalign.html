@@ -2058,6 +2058,9 @@ and open the template in the editor.
             <hr>
             <input id="load_json" type="file" accept="application/json" oninput="load_json(event)" hidden>
             <button onclick="document.getElementById('load_json').click()">Load QuickNII/VisuAlign JSON</button>
+<!--
+            <button commandfor="dlg_load" command="show-modal">Load</button>
+-->
             <div id="log" hidden></div>
         </div>
         <div id="hsiz" class="hsep" onmousedown="hresize(event)"></div>
@@ -2144,5 +2147,22 @@ and open the template in the editor.
             <a href="https://quint-webtools.readthedocs.io/en/latest/WebAlign.html" target="_blank">Documentation</a><br>
             <a href="cache">Cache</a>
         </div>
+<!--
+        <dialog id="dlg_load" closedby="none">
+            Choose QuickNII/VisuAlign JSON file<br>
+            <input type="file" accept="application/json" oninput="load_json(event)"><br>
+            <br>
+            <b>Transformation</b><br>
+            <br>
+            <input type="text" id="json_trf" placeholder="Comma separated list of replacements and deletions, like .png=.dzip,_thumbnail" oninput="transform_json()"><br>
+            <table border="1">
+                <thead>
+                <th>Transformed JSON</th><th>Actual file</th>
+                </thead>
+                <tbody id="json_pairs"></tbody>
+            </table><br>
+            <button commandfor="dlg_load" command="close">Cancel</button>
+        </dialog>
+-->
     </body>
 </html>
