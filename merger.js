@@ -3,11 +3,11 @@ function load_json(event) {
     fr.onload = event => {
         const data = JSON.parse(event.target.result);
         const slices=data.slices;
-        if(slices.length !== images.length) {
-            alert(`Series mismatch: ${slices.length} vs ${images.length} sections.\nProcessing aborts now.`);
-            return;
-        }
-        const checks=new Set;
+//        if(slices.length !== images.length) {
+//            alert(`Series mismatch: ${slices.length} vs ${images.length} sections.\nProcessing aborts now.`);
+//            return;
+//        }
+//        const checks=new Set;
         const mapped=new Map;
         for(const image of images) {
             const m=image.filename.match(/.*(_s\d+[a-zA-Z]?)/);
@@ -15,53 +15,56 @@ function load_json(event) {
                 alert("This function can not yet deal with series without section numbers.\nProblematic section: "+image.filename+"\nProcessing aborts now.");
                 return;
             }
-            if(checks.has(m[1])){
+            if(mapped.has(m[1])){
                 alert("Duplicate section number:\n"+image.filename+"\nProcessing aborts now.");
                 return;
             }
-            checks.add(m[1]);
+//            checks.add(m[1]);
             mapped.set(m[1],image);
         }
-        if(checks.size !== images.length){
-            alert(`${checks.size} individual section numbers are found for ${images.length} sections.\nProcessing aborts now.`);
-            return;
-        }
+//        if(checks.size !== images.length){
+//            alert(`${checks.size} individual section numbers are found for ${images.length} sections.\nProcessing aborts now.`);
+//            return;
+//        }
         for(const slice of slices){
             const m=slice.filename.match(/.*(_s\d+[a-zA-Z]?)/);
             if(!m) {
                 alert("This function can not yet deal with series without section numbers.\nProblematic section: "+slice.filename+"\nProcessing aborts now.");
                 return;
             }
-            if(!checks.has(m[1])) {
-                alert("Can not find matching section for\n"+slice.filename+"\nProcessing aborts now.");
-                return;
-            }
-            checks.delete(m[1]);
+//            if(!checks.has(m[1])) {
+//                alert("Can not find matching section for\n"+slice.filename+"\nProcessing aborts now.");
+//                return;
+//            }
+//            checks.delete(m[1]);
         }
         for(const slice of slices){
             const m=slice.filename.match(/.*(_s\d+[a-zA-Z]?)/);
             const image=mapped.get(m[1]);
-            if(slice.anchoring){
-                image.ouv=slice.anchoring;
-                image.wadone=true;
-            }else{
-                image.anchored=false;
-                image.wadone=false;
-            }
-            const section=series.sections[images.indexOf(image)];
-            if(slice.markers){
-                image.wwdone=true;
-                section.wwdone=true;
-                section.markers=slice.markers.map(coords=>[
-                    coords[0]*section.width/slice.width,
-                    coords[1]*section.height/slice.height,
-                    coords[2]*section.width/slice.width,
-                    coords[3]*section.height/slice.height
-                ]);
-            }else{
-                delete image.wwdone;
-                delete section.wwdone;
-                delete section.markers;
+            if(image){
+                if(slice.anchoring){
+                    image.ouv=slice.anchoring;
+                    image.anchored=true;
+                    image.wadone=true;
+                }else{
+                    image.anchored=false;
+                    image.wadone=false;
+                }
+                const section=series.sections[images.indexOf(image)];
+                if(slice.markers){
+                    image.wwdone=true;
+                    section.wwdone=true;
+                    section.markers=slice.markers.map(coords=>[
+                        coords[0]*section.width/slice.width,
+                        coords[1]*section.height/slice.height,
+                        coords[2]*section.width/slice.width,
+                        coords[3]*section.height/slice.height
+                    ]);
+                }else{
+                    delete image.wwdone;
+                    delete section.wwdone;
+                    delete section.markers;
+                }
             }
         }
         propagate();

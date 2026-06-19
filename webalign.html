@@ -204,6 +204,7 @@ and open the template in the editor.
 //                    document.getElementById("btn_saveas").style.display = "none";
 //                    document.getElementById("btn_export").style.display = "none";
                     document.getElementById("bucket").style.display = "none";
+                    document.getElementById("load_json_button").style.display = "none";
                 }
                 popup("Loading data");
                 window.addEventListener("resize", resize);
@@ -1980,6 +1981,116 @@ and open the template in the editor.
                 if(markermode!=="cross")
                     document.getElementById("btn_"+markermode).classList.add("markermode");
             }
+            
+            async function export_desktop() {
+//                if(!images[0].hasOwnProperty("dzip")) {
+//                    alert("This is a very old dataset.\nPlease contact support in order to get it for desktop tools.");
+//                    return;
+//                }
+                if(images.some(image => image.dzip === "loading")) {
+                    alert("Try again a couple seconds later, filmstrip is still loading.");
+                    return;
+                }
+                const dlg = document.getElementById("dlg_export");
+                dlg.showModal();
+                const prg = document.getElementById("prg");
+                const files = [];
+                const date = new Date;
+                const box = 1024;
+                const total = images.length;
+                let count = 1;
+                const slash = filename.lastIndexOf("/");
+                const dot = filename.lastIndexOf(".");
+                const name = filename.substring(slash + 1, dot > slash ? dot : undefined);
+                const descriptor = {
+                    name,
+//                    target: series.atlas + ".cutlas",
+                    target: series.atlas.includes("WHS") ? "WHS_Rat_v4_39um.cutlas" : "ABA_Mouse_CCFv3_2017_25um.cutlas",
+                    "target-resolution": [atlas.xdim,atlas.ydim,atlas.zdim],
+                    slices: []
+                };
+                let idx = 0;
+                for(const image of images) {
+                    let {filename, snr, width, height, tilesize, overlap, format, base, dzip, maxlevel: level, ouv, markers, anchored} = image;
+                    prg.innerText = `${count} / ${total} ${filename}`;
+                    if(typeof dziporg === "string")
+                        dzip = await netunzip(() => dpurlget(dziporg).then(json => json.url));
+                    while(width > box*2 || height > box*2) {
+                        width = (width + 1) >> 1;
+                        height = (height + 1) >> 1;
+                        level--;
+                    }
+                    const xtiles = Math.ceil(width / tilesize);
+                    const ytiles = Math.ceil(height / tilesize);
+                    const cnv = new OffscreenCanvas(width, height);
+                    const ctx = cnv.getContext("2d");
+                    const loads = [];
+                    for (let x = 0; x < xtiles; x++)
+                        for (let y = 0; y < ytiles; y++)
+                            loads.push(dzip?dzip.get(dzip.entries.get(`${base}${level}/${x}_${y}.${format}`))
+                                    .then(data => new Promise((resolve, reject) => {
+                                        const url=URL.createObjectURL(new Blob([data], {type: "image/"+image.format}));
+                                        let tile = document.createElement("img");
+                                        tile.onload = () => {
+                                            URL.revokeObjectURL(url);
+                                            ctx.drawImage(tile, x * tilesize - (x === 0 ? 0 : overlap), y * tilesize - (y === 0 ? 0 : overlap));
+                                            resolve();
+                                        };
+                                        tile.src = url;
+                                    }))
+                                :series.bucket?dpurlget(`${base}${level}/${x}_${y}.${format}`)
+                                    .then(json => new Promise((resolve, reject) => {
+                                            let tile = document.createElement("img");
+                                            tile.onerror = reject;
+                                            tile.onload = () => {
+                                                ctx.drawImage(tile, x * tilesize - (x === 0 ? 0 : overlap), y * tilesize - (y === 0 ? 0 : overlap));
+                                                resolve();
+                                            };
+                                            tile.crossOrigin = "anonymous";
+                                            tile.src = json.url;
+                                        }))
+                                :new Promise((resolve,reject)=>{
+                                    let tile = document.createElement("img");
+                                    tile.onerror = reject;
+                                    tile.onload = () => {
+                                        ctx.drawImage(tile, x * tilesize - (x === 0 ? 0 : overlap), y * tilesize - (y === 0 ? 0 : overlap));
+                                        resolve();
+                                    };
+                                    tile.crossOrigin = "anonymous";
+                                    tile.src = `${oldisv}${base}${level}/${x}_${y}.${format}`;
+                                }));
+                    await Promise.allSettled(loads);
+                    const blob = await cnv.convertToBlob();
+                    const buffer = await blob.arrayBuffer();
+                    filename = filename.match(/(.+?)(?:\.[^.]*$|$)/)[1] + ".png";
+                    files.push({
+                        date,
+                        name: filename,
+                        data: new Uint8Array(buffer)
+                    });
+                    const slice = {filename, nr: snr, width: image.width, height: image.height};
+                    if(image.anchored)
+                        slice.anchoring = image.ouv;
+                    if(series.sections[idx].markers)
+                        slice.markers = series.sections[idx].markers;
+                    descriptor.slices.push(slice);
+                    idx++;
+                    count++;
+                }
+                files.push({
+                    date,
+                    name: name + ".json",
+                    data: new TextEncoder().encode(JSON.stringify(descriptor))
+                });
+                const zip = zipstore(files);
+                const url = URL.createObjectURL(zip);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = name + ".zip";
+                a.click();
+                URL.revokeObjectURL(url);
+                dlg.close();
+            }
         </script>
     </head>
     <body onload="startup()" onmouseup="mup(event);scrollup()" onmousemove="mmove(event);scrollmove(event)">
@@ -2056,8 +2167,9 @@ and open the template in the editor.
             <button onclick="unify()">Apply to all</button><br>
             <button onclick="auxwnd()">Diagrams</button>
             <hr>
+            <button id="save_desktop_button" onclick="export_desktop()">Save QuickNII/VisuAlign package</button><br>
             <input id="load_json" type="file" accept="application/json" oninput="load_json(event)" hidden>
-            <button onclick="document.getElementById('load_json').click()">Load QuickNII/VisuAlign JSON</button>
+            <button id="load_json_button" onclick="document.getElementById('load_json').click()">Load QuickNII/VisuAlign JSON</button>
 <!--
             <button commandfor="dlg_load" command="show-modal">Load</button>
 -->
@@ -2153,16 +2265,19 @@ and open the template in the editor.
             <input type="file" accept="application/json" oninput="load_json(event)"><br>
             <br>
             <b>Transformation</b><br>
-            <br>
-            <input type="text" id="json_trf" placeholder="Comma separated list of replacements and deletions, like .png=.dzip,_thumbnail" oninput="transform_json()"><br>
+            <input style="/*position:fixed;left:0;right:0;width:auto;*/" type="text" id="json_trf" placeholder="Comma separated list of replacements and deletions, like .png=.dzip,_thumbnail" oninput="transform_json()"><br>
             <table border="1">
                 <thead>
                 <th>Transformed JSON</th><th>Actual file</th>
                 </thead>
                 <tbody id="json_pairs"></tbody>
             </table><br>
-            <button commandfor="dlg_load" command="close">Cancel</button>
+            <button id="apply_json" onclick="apply_json()">Apply</button><button commandfor="dlg_load" command="close">Cancel</button>
         </dialog>
 -->
+        <dialog id="dlg_export" closedby="none">
+            Preparing images, this will take some time<br>
+            <div id="prg"></div>
+        </dialog>
     </body>
 </html>
